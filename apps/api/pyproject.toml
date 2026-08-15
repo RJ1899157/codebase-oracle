@@ -1,0 +1,17 @@
+[project]
+name = "codebase-oracle-api"
+version = "0.1.0"
+description = "FastAPI backend for codebase-oracle"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi",
+  "uvicorn[standard]",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
