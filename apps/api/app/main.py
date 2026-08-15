@@ -104,8 +104,11 @@ def ask(payload: AskPayload) -> dict:
 
 
 @app.get("/graph")
-def get_graph(github_url: str = Query(..., description="The GitHub repository URL")) -> dict:
-    graph_data = global_registry.to_react_flow(github_url)
+def get_graph(
+    github_url: str = Query(..., description="The GitHub repository URL"),
+    layout: str = Query("layered", description="Graph layout mode: layered or radial"),
+) -> dict:
+    graph_data = global_registry.to_react_flow(github_url, layout=layout)
     if not graph_data["nodes"]:
         raise HTTPException(
             status_code=404,

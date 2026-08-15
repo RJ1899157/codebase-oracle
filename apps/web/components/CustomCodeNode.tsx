@@ -12,48 +12,54 @@ const KIND_THEMES: Record<
     text: string;
     tag: string;
     icon: any;
-    accent: string;
+    accentBar: string;
+    dot: string;
   }
 > = {
   class: {
-    bg: "bg-[#111322]",
-    border: "border-purple-500/30 hover:border-purple-400",
-    text: "text-purple-300",
-    tag: "bg-purple-500/10 text-purple-300 border-purple-500/20",
+    bg: "bg-[#090700]/95",
+    border: "border-amber-500/50 hover:border-amber-400",
+    text: "text-amber-400",
+    tag: "bg-amber-500/15 text-amber-300 border-amber-500/40",
     icon: Layers,
-    accent: "bg-purple-500",
+    accentBar: "bg-amber-400",
+    dot: "bg-amber-400 shadow-[0_0_8px_#ffb700]",
   },
   function: {
-    bg: "bg-[#0b1420]",
-    border: "border-sky-500/30 hover:border-sky-400",
-    text: "text-sky-300",
-    tag: "bg-sky-500/10 text-sky-300 border-sky-500/20",
+    bg: "bg-[#00080d]/95",
+    border: "border-cyan-500/50 hover:border-cyan-400",
+    text: "text-cyan-400",
+    tag: "bg-cyan-500/15 text-cyan-300 border-cyan-500/40",
     icon: Code,
-    accent: "bg-sky-500",
+    accentBar: "bg-cyan-400",
+    dot: "bg-cyan-400 shadow-[0_0_8px_#00f0ff]",
   },
   file: {
-    bg: "bg-[#0c1815]",
-    border: "border-emerald-500/40 hover:border-emerald-400",
-    text: "text-emerald-300",
-    tag: "bg-emerald-500/10 text-emerald-300 border-emerald-500/20",
+    bg: "bg-[#000a06]/95",
+    border: "border-emerald-500/60 hover:border-emerald-400",
+    text: "text-emerald-400",
+    tag: "bg-emerald-500/15 text-emerald-300 border-emerald-500/40",
     icon: FileCode,
-    accent: "bg-emerald-500",
+    accentBar: "bg-emerald-400",
+    dot: "bg-emerald-400 shadow-[0_0_8px_#00ff66]",
   },
   import: {
-    bg: "bg-[#17140e]",
-    border: "border-amber-500/30 hover:border-amber-400",
-    text: "text-amber-300",
-    tag: "bg-amber-500/10 text-amber-300 border-amber-500/20",
+    bg: "bg-[#0a0205]/95",
+    border: "border-rose-500/50 hover:border-rose-400",
+    text: "text-rose-400",
+    tag: "bg-rose-500/15 text-rose-300 border-rose-500/40",
     icon: Box,
-    accent: "bg-amber-500",
+    accentBar: "bg-rose-400",
+    dot: "bg-rose-400 shadow-[0_0_8px_#ff3366]",
   },
   call: {
-    bg: "bg-[#181014]",
-    border: "border-rose-500/30 hover:border-rose-400",
-    text: "text-rose-300",
-    tag: "bg-rose-500/10 text-rose-300 border-rose-500/20",
+    bg: "bg-[#0a0205]/95",
+    border: "border-rose-500/50 hover:border-rose-400",
+    text: "text-rose-400",
+    tag: "bg-rose-500/15 text-rose-300 border-rose-500/40",
     icon: Terminal,
-    accent: "bg-rose-500",
+    accentBar: "bg-rose-400",
+    dot: "bg-rose-400 shadow-[0_0_8px_#ff3366]",
   },
 };
 
@@ -65,40 +71,50 @@ export const CustomCodeNode = memo(({ data, selected }: { data: any; selected?: 
 
   return (
     <div
-      className={`px-3.5 py-2.5 rounded-lg border ${
-        selected ? "border-indigo-400 shadow-[0_0_20px_rgba(99,102,241,0.3)] ring-1 ring-indigo-400" : theme.border
-      } ${theme.bg} shadow-md min-w-[200px] text-xs transition-all duration-150 cursor-pointer relative group`}
+      className={`relative px-4 py-3 rounded-xl border ${
+        selected
+          ? "border-cyan-400 shadow-[0_0_25px_rgba(0,240,255,0.4)] ring-1 ring-cyan-400"
+          : theme.border
+      } ${theme.bg} shadow-2xl min-w-[210px] text-xs transition-all duration-200 hover:-translate-y-1 cursor-pointer overflow-hidden group`}
     >
+      {/* Left Bold Color Accent Strip */}
+      <div className={`absolute left-0 top-0 bottom-0 w-1 ${theme.accentBar}`} />
+
       <Handle
         type="target"
         position={Position.Top}
-        className="!bg-slate-600 !w-2 !h-2 !border-none"
+        className="!bg-slate-400 !w-2.5 !h-2.5 !border-2 !border-black"
+      />
+      <Handle
+        type="target"
+        position={Position.Left}
+        className="!bg-slate-400 !w-2.5 !h-2.5 !border-2 !border-black"
       />
 
-      <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-slate-800/80">
+      <div className="flex items-center justify-between gap-2 pb-2 border-b border-white/10 pl-1">
         <div className="flex items-center gap-1.5">
-          <div className={`w-1.5 h-1.5 rounded-full ${theme.accent}`} />
+          <div className={`w-1.5 h-1.5 rounded-full ${theme.dot}`} />
           <Icon className={`w-3.5 h-3.5 ${theme.text}`} />
           <span
-            className={`text-[9px] uppercase font-mono px-1.5 py-0.5 rounded border ${theme.tag} font-semibold`}
+            className={`text-[9px] uppercase font-mono px-2 py-0.5 rounded-md border ${theme.tag} font-bold tracking-wider`}
           >
             {kind}
           </span>
         </div>
-        <span className="text-[10px] text-slate-500 font-mono">
+        <span className="text-[10px] text-slate-400 font-mono font-medium">
           L{data.start_line}
         </span>
       </div>
 
-      <div className="mt-1.5">
+      <div className="mt-2 pl-1">
         <div
-          className={`font-mono text-[12px] truncate max-w-[180px] ${
-            isFile ? "font-bold text-emerald-300" : "font-semibold text-slate-100"
+          className={`font-mono text-[13px] truncate max-w-[185px] ${
+            isFile ? "font-extrabold text-emerald-300" : "font-bold text-white group-hover:text-cyan-300"
           }`}
         >
           {data.label}
         </div>
-        <div className="text-[10px] text-slate-400 truncate max-w-[180px] mt-0.5 font-mono">
+        <div className="text-[10px] text-slate-400 truncate max-w-[185px] mt-0.5 font-mono">
           {data.file_path.split("/").slice(-2).join("/")}
         </div>
       </div>
@@ -106,7 +122,12 @@ export const CustomCodeNode = memo(({ data, selected }: { data: any; selected?: 
       <Handle
         type="source"
         position={Position.Bottom}
-        className="!bg-slate-600 !w-2 !h-2 !border-none"
+        className="!bg-slate-400 !w-2.5 !h-2.5 !border-2 !border-black"
+      />
+      <Handle
+        type="source"
+        position={Position.Right}
+        className="!bg-slate-400 !w-2.5 !h-2.5 !border-2 !border-black"
       />
     </div>
   );
