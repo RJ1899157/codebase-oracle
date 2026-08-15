@@ -42,6 +42,27 @@ def build_graph_batch(file_path: Path, parsed: ParsedPythonFile) -> GraphBatch:
             )
         )
 
+        if symbol.kind == "class" and symbol.bases:
+            for base in symbol.bases:
+                base_id = f"class::{base}"
+                nodes.append(
+                    GraphNode(
+                        id=base_id,
+                        kind="class",
+                        name=base,
+                        file_path=file_path.as_posix(),
+                        start_line=symbol.start_line,
+                        end_line=symbol.end_line,
+                    )
+                )
+                edges.append(
+                    GraphEdge(
+                        source_id=symbol_id,
+                        target_id=base_id,
+                        relation="INHERITS",
+                    )
+                )
+
     for imp in parsed.imports:
         import_id = f"import::{file_path.as_posix()}::{imp.name}"
         nodes.append(

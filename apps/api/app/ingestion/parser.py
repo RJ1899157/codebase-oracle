@@ -13,6 +13,7 @@ class CodeSymbol:
     kind: str
     start_line: int
     end_line: int
+    bases: list[str] | None = None
 
 
 @dataclass(frozen=True)
@@ -70,6 +71,14 @@ def parse_python_file(file_path: Path) -> ParsedPythonFile:
 
         elif node.type == "class_definition":
             name_node = node.child_by_field_name("name")
+            super_node = node.child_by_field_name("superclasses")
+            bases: list[str] | None = None
+
+            if super_node is not None:
+                raw_bases = node_text(super_node).strip("()")
+                if raw_bases:
+                    bases = [base.strip() for base in raw_bases.split(",") if base.strip()]
+
             if name_node is not None:
                 symbols.append(
                     CodeSymbol(
@@ -77,6 +86,7 @@ def parse_python_file(file_path: Path) -> ParsedPythonFile:
                         kind="class",
                         start_line=node.start_point[0] + 1,
                         end_line=node.end_point[0] + 1,
+                        bases=bases,
                     )
                 )
 
