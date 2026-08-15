@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from functools import lru_cache
-
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -14,6 +13,12 @@ class Settings(BaseSettings):
 
     qdrant_url: str = "http://localhost:6333"
     qdrant_api_key: str = ""
+
+    groq_api_key: str = ""
+    groq_model: str = "llama-3.3-70b-versatile"
+
+    gemini_api_key: str = ""
+    gemini_model: str = "gemini-1.5-flash"
 
 
 @lru_cache
