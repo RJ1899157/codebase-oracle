@@ -1,2 +1,8 @@
 fastapi
+neo4j
+pydantic-settings
+httpx2
+pytest
+tree-sitter
+tree-sitter-python
 uvicorn[standard]

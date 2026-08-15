@@ -4,4 +4,10 @@ Version: 0.1.0
 Summary: FastAPI backend for codebase-oracle
 Requires-Python: >=3.11
 Requires-Dist: fastapi
+Requires-Dist: neo4j
+Requires-Dist: pydantic-settings
+Requires-Dist: httpx2
+Requires-Dist: pytest
+Requires-Dist: tree-sitter
+Requires-Dist: tree-sitter-python
 Requires-Dist: uvicorn[standard]

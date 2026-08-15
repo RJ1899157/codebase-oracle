@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any
 import urllib.request
 import urllib.error
 
 from app.core.config import get_settings
+
+logger = logging.getLogger("codebase_oracle_llm")
 
 SYSTEM_PROMPT = """You are Codebase Oracle, an expert AI software engineer analyzing GitHub repositories.
 You are given a user question and a set of retrieved code chunks and knowledge-graph relationships from the repository.
@@ -25,8 +28,9 @@ def call_groq(prompt: str, settings: Any | None = None) -> str:
 
     url = "https://api.groq.com/openai/v1/chat/completions"
     headers = {
-        "Authorization": f"Bearer {cfg.groq_api_key}",
+        "Authorization": f"Bearer {cfg.groq_api_key.strip()}",
         "Content-Type": "application/json",
+        "User-Agent": "CodebaseOracle/1.0",
     }
     payload = {
         "model": cfg.groq_model,
@@ -43,7 +47,7 @@ def call_groq(prompt: str, settings: Any | None = None) -> str:
         headers=headers,
         method="POST",
     )
-    with urllib.request.urlopen(req, timeout=15) as response:
+    with urllib.request.urlopen(req, timeout=20) as response:
         res = json.loads(response.read().decode("utf-8"))
         return res["choices"][0]["message"]["content"]
 
@@ -53,7 +57,7 @@ def call_gemini(prompt: str, settings: Any | None = None) -> str:
     if not cfg.gemini_api_key:
         raise ValueError("GEMINI_API_KEY is not configured")
 
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{cfg.gemini_model}:generateContent?key={cfg.gemini_api_key}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{cfg.gemini_model}:generateContent?key={cfg.gemini_api_key.strip()}"
     headers = {"Content-Type": "application/json"}
     payload = {
         "contents": [
@@ -72,7 +76,7 @@ def call_gemini(prompt: str, settings: Any | None = None) -> str:
         headers=headers,
         method="POST",
     )
-    with urllib.request.urlopen(req, timeout=15) as response:
+    with urllib.request.urlopen(req, timeout=20) as response:
         res = json.loads(response.read().decode("utf-8"))
         return res["candidates"][0]["content"]["parts"][0]["text"]
 
@@ -81,18 +85,17 @@ def generate_with_llm(prompt: str) -> str:
     settings = get_settings()
 
     # 1. Try Groq (LLaMA 3.3 70B) first
-    if settings.groq_api_key:
+    if settings.groq_api_key and settings.groq_api_key.strip():
         try:
             return call_groq(prompt, settings)
-        except Exception:
-            pass  # Fall through to Gemini fallback
+        except Exception as e:
+            print(f"[Codebase Oracle] Groq API call failed: {e}. Attempting fallback...")
 
     # 2. Try Gemini Flash fallback
-    if settings.gemini_api_key:
+    if settings.gemini_api_key and settings.gemini_api_key.strip():
         try:
             return call_gemini(prompt, settings)
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[Codebase Oracle] Gemini API call failed: {e}. Falling back to local synthesis...")
 
-    # 3. Deterministic fallback for local dev / tests when no keys are provided
     return ""

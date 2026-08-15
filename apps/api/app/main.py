@@ -75,6 +75,16 @@ def get_graph(github_url: str = Query(..., description="The GitHub repository UR
     return graph_data
 
 
+@app.get("/")
+def root() -> dict[str, str]:
+    return {
+        "service": "codebase-oracle API",
+        "status": "running",
+        "docs_url": "/docs",
+        "health_url": "/health",
+    }
+
+
 @app.get("/evaluate")
 def evaluate(github_url: str = Query(..., description="The GitHub repository URL")) -> dict:
     repo_data = global_registry.get(github_url)
