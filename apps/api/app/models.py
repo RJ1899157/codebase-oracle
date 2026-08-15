@@ -38,3 +38,30 @@ class CodeChunk:
 @dataclass(frozen=True)
 class EmbeddedChunk(CodeChunk):
     embedding: list[float]
+
+
+@dataclass(frozen=True)
+class AskRequest:
+    github_url: str
+    question: str
+
+
+@dataclass(frozen=True)
+class IngestRequest:
+    github_url: str
+
+
+@dataclass(frozen=True)
+class Citation:
+    file_path: str
+    start_line: int
+    end_line: int
+    github_url: str | None = None
+
+
+@dataclass(frozen=True)
+class AnswerResult:
+    answer: str
+    citations: list[Citation]
+    refused: bool
+    reason: str | None = None
