@@ -1,2 +1,21 @@
-"""Application settings will live here."""
+from __future__ import annotations
 
+from functools import lru_cache
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    neo4j_uri: str = "bolt://localhost:7687"
+    neo4j_user: str = "neo4j"
+    neo4j_password: str = ""
+
+    qdrant_url: str = "http://localhost:6333"
+    qdrant_api_key: str = ""
+
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()

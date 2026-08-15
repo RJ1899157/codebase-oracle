@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from app.core.config import get_settings
 from app.ingestion.parser import ParsedPythonFile
 from app.models import GraphBatch, GraphEdge, GraphNode
 
@@ -107,5 +108,50 @@ def build_graph_batch(file_path: Path, parsed: ParsedPythonFile) -> GraphBatch:
 
 
 class Neo4jGraphStore:
+    def __init__(self, uri: str | None = None, user: str | None = None, password: str | None = None) -> None:
+        from neo4j import GraphDatabase
+
+        settings = get_settings()
+        self._driver = GraphDatabase.driver(
+            uri or settings.neo4j_uri,
+            auth=(user or settings.neo4j_user, password or settings.neo4j_password),
+        )
+
+    def close(self) -> None:
+        self._driver.close()
+
     def write_batch(self, batch: GraphBatch) -> None:
-        raise NotImplementedError("Neo4j writing will be implemented next")
+        with self._driver.session() as session:
+            session.execute_write(self._write_batch_tx, batch)
+
+    @staticmethod
+    def _write_batch_tx(tx, batch: GraphBatch) -> None:
+        for node in batch.nodes:
+            tx.run(
+                """
+                MERGE (n:Entity {id: $id})
+                SET n.kind = $kind,
+                    n.name = $name,
+                    n.file_path = $file_path,
+                    n.start_line = $start_line,
+                    n.end_line = $end_line
+                """,
+                id=node.id,
+                kind=node.kind,
+                name=node.name,
+                file_path=node.file_path,
+                start_line=node.start_line,
+                end_line=node.end_line,
+            )
+
+        for edge in batch.edges:
+            tx.run(
+                """
+                MATCH (source:Entity {id: $source_id})
+                MATCH (target:Entity {id: $target_id})
+                MERGE (source)-[r:RELATION {kind: $relation}]->(target)
+                """,
+                source_id=edge.source_id,
+                target_id=edge.target_id,
+                relation=edge.relation,
+            )
