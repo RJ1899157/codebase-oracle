@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.evaluation.service import EvalTestCase, run_evaluation
 from app.graph.registry import global_registry
 from app.ingestion.github_repo import ingest_github_repo, process_repository
 from app.models import AskRequest, GraphBatch, IngestRequest
@@ -72,3 +73,54 @@ def get_graph(github_url: str = Query(..., description="The GitHub repository UR
             detail=f"Repository '{github_url}' has not been ingested yet.",
         )
     return graph_data
+
+
+@app.get("/evaluate")
+def evaluate(github_url: str = Query(..., description="The GitHub repository URL")) -> dict:
+    repo_data = global_registry.get(github_url)
+    if not repo_data:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Repository '{github_url}' not ingested yet.",
+        )
+
+    benchmark_cases = [
+        EvalTestCase(
+            question="Where is Calculator or core math class defined?",
+            ground_truth_answer="Calculator is defined in calculator.py",
+            expected_files=["calculator.py", "math_lib.py"],
+            should_refuse=False,
+        ),
+        EvalTestCase(
+            question="How does quantum teleportation blockchain work in this repo?",
+            ground_truth_answer="",
+            expected_files=[],
+            should_refuse=True,
+        ),
+    ]
+
+    report = run_evaluation(
+        test_cases=benchmark_cases,
+        chunks=repo_data.chunks,
+        batch=repo_data.batch,
+        github_url=github_url,
+    )
+
+    return {
+        "github_url": github_url,
+        "total_cases": report.total_cases,
+        "passed_cases": report.passed_cases,
+        "mean_faithfulness": report.mean_faithfulness,
+        "mean_context_precision": report.mean_context_precision,
+        "refusal_accuracy": report.refusal_accuracy,
+        "details": [
+            {
+                "question": d.question,
+                "faithfulness": d.faithfulness_score,
+                "precision": d.context_precision_score,
+                "refusal_accurate": d.refusal_accurate,
+                "passed": d.passed,
+            }
+            for d in report.details
+        ],
+    }

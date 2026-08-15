@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from collections import Counter
 from dataclasses import dataclass
 
@@ -14,11 +15,8 @@ class RetrievedChunk:
 
 
 def tokenize(text: str) -> list[str]:
-    return [
-        token.lower()
-        for token in text.replace(".", " ").replace("_", " ").split()
-        if token
-    ]
+    # Extracts clean alphanumeric identifiers from code (ignoring parens, colons, commas, etc.)
+    return [t.lower() for t in re.findall(r"\w+", text) if t]
 
 
 def bm25_like_score(query: str, chunk_text: str) -> float:
@@ -42,23 +40,6 @@ def rank_by_keyword(query: str, chunks: list[CodeChunk]) -> list[RetrievedChunk]
     return scored
 
 
-def reciprocal_rank_fusion(rankings: list[list[RetrievedChunk]], k: int = 60) -> list[RetrievedChunk]:
-    merged: dict[str, RetrievedChunk] = {}
-    scores: dict[str, float] = {}
-
-    for ranking in rankings:
-        for rank, item in enumerate(ranking, start=1):
-            key = item.chunk.id
-            merged[key] = item
-            scores[key] = scores.get(key, 0.0) + 1.0 / (k + rank)
-
-    result = [
-        RetrievedChunk(chunk=merged[key].chunk, score=scores[key], source=merged[key].source)
-        for key in scores
-    ]
-    result.sort(key=lambda item: item.score, reverse=True)
-    return result
-
 def graph_candidates(query: str, batch: GraphBatch) -> list[RetrievedChunk]:
     query_tokens = set(tokenize(query))
     candidates: list[RetrievedChunk] = []
@@ -80,7 +61,34 @@ def graph_candidates(query: str, batch: GraphBatch) -> list[RetrievedChunk]:
     candidates.sort(key=lambda item: item.score, reverse=True)
     return candidates
 
+
+def reciprocal_rank_fusion(rankings: list[list[RetrievedChunk]], k: int = 60) -> list[RetrievedChunk]:
+    merged: dict[str, RetrievedChunk] = {}
+    scores: dict[str, float] = {}
+
+    for ranking in rankings:
+        for rank, item in enumerate(ranking, start=1):
+            key = item.chunk.id
+            merged[key] = item
+            scores[key] = scores.get(key, 0.0) + 1.0 / (k + rank)
+
+    result = [
+        RetrievedChunk(chunk=merged[key].chunk, score=scores[key], source=merged[key].source)
+        for key in scores
+    ]
+    result.sort(key=lambda item: item.score, reverse=True)
+    return result
+
+
 def hybrid_retrieve(query: str, chunks: list[CodeChunk], batch: GraphBatch) -> list[RetrievedChunk]:
     keyword_results = rank_by_keyword(query, chunks)
     graph_results = graph_candidates(query, batch)
-    return reciprocal_rank_fusion([keyword_results, graph_results])
+
+    # Filter only positive matches
+    positive_keywords = [item for item in keyword_results if item.score > 0.0]
+
+    if not positive_keywords and not graph_results:
+        return []
+
+    valid_rankings = [r for r in [positive_keywords, graph_results] if r]
+    return reciprocal_rank_fusion(valid_rankings)

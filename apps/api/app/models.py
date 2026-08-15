@@ -64,3 +64,30 @@ class AnswerResult:
     citations: list[Citation]
     refused: bool
     reason: str | None = None
+
+
+@dataclass(frozen=True)
+class EvalTestCase:
+    question: str
+    ground_truth_answer: str
+    expected_files: list[str]
+    should_refuse: bool = False
+
+
+@dataclass(frozen=True)
+class EvalMetricResult:
+    question: str
+    faithfulness_score: float
+    context_precision_score: float
+    refusal_accurate: bool
+    passed: bool
+
+
+@dataclass(frozen=True)
+class EvalReport:
+    total_cases: int
+    passed_cases: int
+    mean_faithfulness: float
+    mean_context_precision: float
+    refusal_accuracy: float
+    details: list[EvalMetricResult]
