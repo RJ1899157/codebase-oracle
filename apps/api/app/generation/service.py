@@ -2,14 +2,13 @@ from __future__ import annotations
 
 from app.generation.github_links import build_github_line_link
 from app.generation.llm import generate_with_llm
-from app.models import AnswerResult, Citation
+from app.models import AnswerResult, ChatMessage, Citation
 from app.retrieval.service import RetrievedChunk
 
 
 def format_context_for_prompt(question: str, context: list[RetrievedChunk], max_chunks: int = 6) -> str:
     lines = [f"QUESTION: {question}\n", "RETRIEVED CODE CONTEXT:"]
     for i, item in enumerate(context[:max_chunks], 1):
-        # Truncate each individual chunk to at most 1800 characters to keep prompt tightly within LLM context limit
         chunk_snippet = item.chunk.text[:1800]
         lines.append(
             f"\n--- Context [{i}] from {item.chunk.file_path} (lines {item.chunk.start_line}-{item.chunk.end_line}) [Source: {item.source}] ---"
@@ -22,18 +21,21 @@ def generate_answer(
     question: str,
     context: list[RetrievedChunk],
     github_url: str | None = None,
+    history: list[ChatMessage] | None = None,
 ) -> AnswerResult:
     if not context or all(item.score <= 0.0 for item in context):
-        return AnswerResult(
-            answer="",
-            citations=[],
-            refused=True,
-            reason="Insufficient context found in repository to answer this question accurately.",
-        )
+        # If we have chat history, check if this is a conversational query before strict refusal
+        if not history:
+            return AnswerResult(
+                answer="",
+                citations=[],
+                refused=True,
+                reason="Insufficient context found in repository to answer this question accurately.",
+            )
 
     # Build deep citations for the top matches
     citations: list[Citation] = []
-    for item in context[:4]:
+    for item in (context or [])[:4]:
         link = None
         if github_url is not None:
             link = build_github_line_link(
@@ -51,8 +53,8 @@ def generate_answer(
             )
         )
 
-    prompt = format_context_for_prompt(question, context, max_chunks=6)
-    llm_output, error_msg = generate_with_llm(prompt)
+    prompt = format_context_for_prompt(question, context or [], max_chunks=6)
+    llm_output, error_msg = generate_with_llm(prompt, history=history)
 
     if llm_output.startswith("REFUSAL:"):
         return AnswerResult(
@@ -63,12 +65,16 @@ def generate_answer(
         )
 
     if not llm_output:
-        top = context[0]
-        fallback_msg = (
-            f"**Local Graph Evidence Found**:\n"
-            f"The primary implementation for `{question}` is located in `{top.chunk.file_path}` "
-            f"(lines {top.chunk.start_line}–{top.chunk.end_line}).\n\n"
-        )
+        if context:
+            top = context[0]
+            fallback_msg = (
+                f"**Local Graph Evidence Found**:\n"
+                f"The primary implementation for `{question}` is located in `{top.chunk.file_path}` "
+                f"(lines {top.chunk.start_line}–{top.chunk.end_line}).\n\n"
+            )
+        else:
+            fallback_msg = "Could not synthesize response from repository context.\n\n"
+
         if error_msg:
             fallback_msg += f"> ⚠️ **LLM Diagnostic Notice**: `{error_msg}`"
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useMemo, useEffect } from "react";
+import React, { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import {
   ReactFlow,
   Background,
@@ -24,14 +24,27 @@ import {
   Loader2,
   Copy,
   Check,
-  Zap,
   Terminal,
   ShieldCheck,
   Code2,
+  Trash2,
+  Send,
+  User,
+  Bot,
+  Sparkles,
 } from "lucide-react";
 import { CustomCodeNode } from "@/components/CustomCodeNode";
 
 const API_BASE = "http://localhost:8000";
+
+interface ChatMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  citations?: any[];
+  refused?: boolean;
+  reason?: string;
+}
 
 // Lightweight Markdown Renderer for clean engineering display
 function MarkdownContent({ content }: { content: string }) {
@@ -57,7 +70,7 @@ function MarkdownContent({ content }: { content: string }) {
         }
         if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
           return (
-            <div key={i} className="flex items-start gap-2 ml-2 text-slate-300">
+            <div key={i} className="flex items-start gap-2 ml-1 text-slate-300">
               <span className="text-indigo-400 mt-0.5">•</span>
               <span>{formatInlineMarkdown(trimmed.slice(2))}</span>
             </div>
@@ -65,13 +78,13 @@ function MarkdownContent({ content }: { content: string }) {
         }
         if (trimmed.startsWith("> ")) {
           return (
-            <blockquote key={i} className="p-2.5 rounded bg-slate-900 border-l-2 border-indigo-500 text-slate-300 italic text-[11px]">
+            <blockquote key={i} className="p-2.5 rounded bg-slate-900/80 border-l-2 border-indigo-500 text-slate-300 italic text-[11px]">
               {formatInlineMarkdown(trimmed.slice(2))}
             </blockquote>
           );
         }
         if (trimmed.startsWith("```")) {
-          return null; // Skip raw delimiters
+          return null;
         }
         if (!trimmed) {
           return <div key={i} className="h-1" />;
@@ -83,7 +96,6 @@ function MarkdownContent({ content }: { content: string }) {
 }
 
 function formatInlineMarkdown(text: string) {
-  // Bold **text** and `code` formatting
   const parts = text.split(/(`[^`]+`|\*\*[^*]+\*\*)/g);
   return parts.map((part, idx) => {
     if (part.startsWith("`") && part.endsWith("`")) {
@@ -109,10 +121,10 @@ export default function App() {
   const [isIngesting, setIsIngesting] = useState(false);
   const [ingestStats, setIngestStats] = useState<any>(null);
 
-  const [question, setQuestion] = useState("");
+  const [inputQuery, setInputQuery] = useState("");
   const [isAsking, setIsAsking] = useState(false);
-  const [answerData, setAnswerData] = useState<any>(null);
-  const [copied, setCopied] = useState(false);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [activeModel, setActiveModel] = useState<string>("Detecting LLM...");
 
   const [allNodes, setAllNodes] = useState<Node[]>([]);
@@ -124,12 +136,18 @@ export default function App() {
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [selectedNode, setSelectedNode] = useState<any>(null);
 
+  const chatBottomRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     fetch(`${API_BASE}/status`)
       .then((r) => r.json())
       .then((data) => setActiveModel(data.active_model))
       .catch(() => setActiveModel("API Offline"));
   }, []);
+
+  useEffect(() => {
+    chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isAsking]);
 
   const nodeTypes = useMemo(() => ({ customCodeNode: CustomCodeNode }), []);
 
@@ -166,7 +184,7 @@ export default function App() {
 
     setIsIngesting(true);
     setIngestStats(null);
-    setAnswerData(null);
+    setMessages([]);
 
     try {
       const ingestRes = await fetch(`${API_BASE}/ingest`, {
@@ -195,21 +213,60 @@ export default function App() {
     }
   };
 
-  const handleAsk = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!question || !githubUrl) return;
+  const handleSendMessage = async (e?: React.FormEvent, customText?: string) => {
+    if (e) e.preventDefault();
+    const query = customText || inputQuery;
+    if (!query.trim() || !githubUrl || isAsking) return;
 
+    const userMessage: ChatMessage = {
+      id: `user-${Date.now()}`,
+      role: "user",
+      content: query,
+    };
+
+    const newHistory = [...messages, userMessage];
+    setMessages(newHistory);
+    setInputQuery("");
     setIsAsking(true);
+
     try {
+      // Build previous conversation turns for backend
+      const historyPayload = messages.map((m) => ({
+        role: m.role,
+        content: m.content,
+      }));
+
       const res = await fetch(`${API_BASE}/ask`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ github_url: githubUrl, question }),
+        body: JSON.stringify({
+          github_url: githubUrl,
+          question: query,
+          history: historyPayload,
+        }),
       });
       const data = await res.json();
-      setAnswerData(data);
+
+      const assistantMessage: ChatMessage = {
+        id: `assistant-${Date.now()}`,
+        role: "assistant",
+        content: data.answer,
+        citations: data.citations || [],
+        refused: data.refused,
+        reason: data.reason,
+      };
+
+      setMessages([...newHistory, assistantMessage]);
     } catch (err) {
       console.error("Ask error:", err);
+      setMessages([
+        ...newHistory,
+        {
+          id: `error-${Date.now()}`,
+          role: "assistant",
+          content: "Failed to connect to backend server. Please verify the API container is running.",
+        },
+      ]);
     } finally {
       setIsAsking(false);
     }
@@ -219,12 +276,14 @@ export default function App() {
     setSelectedNode(node.data);
   }, []);
 
-  const copyAnswer = () => {
-    if (answerData?.answer) {
-      navigator.clipboard.writeText(answerData.answer);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
+  const copyToClipboard = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const clearChat = () => {
+    setMessages([]);
   };
 
   return (
@@ -240,7 +299,7 @@ export default function App() {
               codebase-oracle
             </h1>
             <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
-              GraphRAG
+              GraphRAG 2.0
             </span>
           </div>
         </div>
@@ -412,116 +471,186 @@ export default function App() {
           )}
         </div>
 
-        {/* Right: Q&A and Evidence Studio */}
-        <div className="w-[480px] border-l border-slate-800 bg-[#090c13] flex flex-col shrink-0 h-full z-20">
+        {/* Right: Multi-Turn Conversation Q&A Studio */}
+        <div className="w-[500px] border-l border-slate-800 bg-[#090c13] flex flex-col shrink-0 h-full z-20">
           <div className="p-3.5 border-b border-slate-800 flex items-center justify-between bg-[#0c1017]">
-            <h2 className="text-xs font-semibold text-slate-300 flex items-center gap-2 font-mono">
-              <Terminal className="w-3.5 h-3.5 text-indigo-400" /> Q&A Studio
-            </h2>
-            {answerData && !answerData.refused && (
+            <div className="flex items-center gap-2">
+              <Terminal className="w-3.5 h-3.5 text-indigo-400" />
+              <h2 className="text-xs font-semibold text-slate-300 font-mono">
+                Architecture Chat Studio
+              </h2>
+              {messages.length > 0 && (
+                <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-400 font-mono">
+                  {messages.length} messages
+                </span>
+              )}
+            </div>
+            {messages.length > 0 && (
               <button
-                onClick={copyAnswer}
-                className="text-slate-400 hover:text-white flex items-center gap-1 text-[11px] font-mono transition px-2 py-0.5 rounded bg-slate-800/80 border border-slate-700"
+                onClick={clearChat}
+                className="text-slate-400 hover:text-rose-300 flex items-center gap-1 text-[11px] font-mono transition px-2 py-0.5 rounded hover:bg-rose-950/30 hover:border-rose-900/50 border border-transparent"
+                title="Clear conversation history"
               >
-                {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                {copied ? "Copied" : "Copy"}
+                <Trash2 className="w-3 h-3" />
+                Clear
               </button>
             )}
           </div>
 
-          {/* Answers Container */}
+          {/* Messages Scroll Area */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {!answerData && !isAsking && (
+            {messages.length === 0 && !isAsking && (
               <div className="h-full flex flex-col items-center justify-center text-center text-slate-500 px-6">
                 <Terminal className="w-8 h-8 text-slate-600 mb-2" />
-                <p className="text-xs font-medium text-slate-300 font-mono">Ask Architecture Questions</p>
-                <p className="text-[11px] text-slate-500 mt-1 max-w-xs leading-relaxed">
-                  Hybrid traversal combining Neo4j graph relationships, BM25 keywords, and Qdrant code embeddings.
+                <p className="text-xs font-medium text-slate-300 font-mono">
+                  Conversational Codebase Assistant
                 </p>
+                <p className="text-[11px] text-slate-500 mt-1 max-w-xs leading-relaxed">
+                  Multi-turn conversation enabled. Ask questions and continuous follow-ups grounded in AST relations & embeddings.
+                </p>
+
+                {/* Suggested Quick Prompts */}
+                <div className="mt-4 flex flex-col gap-1.5 w-full max-w-xs text-left">
+                  {[
+                    "Where is the Flask class defined?",
+                    "How are blueprints registered in the app?",
+                    "What are the main entrypoint files?",
+                  ].map((prompt, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => handleSendMessage(undefined, prompt)}
+                      className="text-[11px] text-slate-400 hover:text-white bg-[#0c1017] hover:bg-slate-800 border border-slate-800 hover:border-indigo-500/50 px-3 py-2 rounded-lg text-left transition font-mono truncate"
+                    >
+                      → {prompt}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
+
+            {/* Conversation Messages */}
+            {messages.map((msg) => (
+              <div key={msg.id} className="space-y-2 animate-in fade-in duration-200">
+                {/* User Message */}
+                {msg.role === "user" ? (
+                  <div className="flex items-start justify-end gap-2">
+                    <div className="max-w-[85%] rounded-2xl rounded-tr-sm bg-indigo-600/90 text-white px-3.5 py-2 text-xs font-medium shadow-sm">
+                      {msg.content}
+                    </div>
+                    <div className="w-6 h-6 rounded-full bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center shrink-0 mt-0.5">
+                      <User className="w-3.5 h-3.5 text-indigo-300" />
+                    </div>
+                  </div>
+                ) : (
+                  /* Assistant Message */
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-6 h-6 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center shrink-0 mt-0.5">
+                      <Bot className="w-3.5 h-3.5 text-indigo-400" />
+                    </div>
+
+                    <div className="flex-1 space-y-3 min-w-0">
+                      {/* Refusal Alert */}
+                      {msg.refused ? (
+                        <div className="p-3.5 rounded-xl bg-amber-950/20 border border-amber-800/50 text-xs text-amber-200 flex items-start gap-2.5 font-mono">
+                          <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                          <div>
+                            <div className="font-semibold text-amber-300">Insufficient Context</div>
+                            <div className="mt-0.5 text-[11px] opacity-90">{msg.reason}</div>
+                          </div>
+                        </div>
+                      ) : (
+                        /* Standard Grounded Answer */
+                        <div className="p-4 rounded-xl bg-[#0c1017] border border-slate-800/90 shadow-sm relative group">
+                          <button
+                            onClick={() => copyToClipboard(msg.content, msg.id)}
+                            className="absolute top-2.5 right-2.5 opacity-0 group-hover:opacity-100 text-slate-400 hover:text-white transition p-1 rounded bg-slate-800 border border-slate-700"
+                            title="Copy answer"
+                          >
+                            {copiedId === msg.id ? (
+                              <Check className="w-3 h-3 text-emerald-400" />
+                            ) : (
+                              <Copy className="w-3 h-3" />
+                            )}
+                          </button>
+                          <MarkdownContent content={msg.content} />
+                        </div>
+                      )}
+
+                      {/* Grounded Code Citations */}
+                      {msg.citations && msg.citations.length > 0 && (
+                        <div className="space-y-1.5 font-mono pl-1">
+                          <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Code Citations
+                          </div>
+                          <div className="space-y-1">
+                            {msg.citations.map((cite: any, i: number) => (
+                              <div
+                                key={i}
+                                className="p-2 rounded-lg bg-[#0c1017] border border-slate-800/80 flex items-center justify-between text-xs hover:border-slate-700 transition"
+                              >
+                                <div className="font-mono text-[11px] text-slate-300 truncate max-w-[320px]">
+                                  <span className="text-white font-medium">{cite.file_path}</span>{" "}
+                                  <span className="text-indigo-400 font-semibold">
+                                    #L{cite.start_line}–L{cite.end_line}
+                                  </span>
+                                </div>
+                                {cite.github_url && (
+                                  <a
+                                    href={cite.github_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-indigo-400 hover:text-indigo-300 flex items-center gap-1 text-[10px] font-semibold"
+                                  >
+                                    Open <ExternalLink className="w-3 h-3" />
+                                  </a>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
 
             {isAsking && (
-              <div className="p-3.5 rounded-lg bg-[#0c1017] border border-slate-800 flex items-center gap-3 text-xs text-indigo-300 font-mono">
-                <Loader2 className="w-4 h-4 animate-spin text-indigo-400" />
-                Analyzing repository structure & synthesizing answer...
+              <div className="flex items-start gap-2.5 animate-in fade-in duration-150">
+                <div className="w-6 h-6 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center shrink-0">
+                  <Bot className="w-3.5 h-3.5 text-indigo-400" />
+                </div>
+                <div className="p-3.5 rounded-xl bg-[#0c1017] border border-slate-800 flex items-center gap-3 text-xs text-indigo-300 font-mono">
+                  <Loader2 className="w-4 h-4 animate-spin text-indigo-400" />
+                  Synthesizing answer with conversation context...
+                </div>
               </div>
             )}
 
-            {answerData && (
-              <div className="space-y-4">
-                {/* Refusal Alert */}
-                {answerData.refused && (
-                  <div className="p-3.5 rounded-lg bg-amber-950/20 border border-amber-800/50 text-xs text-amber-200 flex items-start gap-2.5 font-mono">
-                    <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                    <div>
-                      <div className="font-semibold text-amber-300">Insufficient Context</div>
-                      <div className="mt-0.5 text-[11px] opacity-90">{answerData.reason}</div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Grounded Answer */}
-                {!answerData.refused && (
-                  <div className="p-4 rounded-xl bg-[#0c1017] border border-slate-800/90 shadow-sm">
-                    <MarkdownContent content={answerData.answer} />
-                  </div>
-                )}
-
-                {/* Citations List */}
-                {answerData.citations && answerData.citations.length > 0 && (
-                  <div className="space-y-1.5 font-mono">
-                    <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Code Citations
-                    </div>
-                    <div className="space-y-1.5">
-                      {answerData.citations.map((cite: any, i: number) => (
-                        <div
-                          key={i}
-                          className="p-2.5 rounded-lg bg-[#0c1017] border border-slate-800/80 flex items-center justify-between text-xs hover:border-slate-700 transition"
-                        >
-                          <div className="font-mono text-[11px] text-slate-300 truncate max-w-[320px]">
-                            <span className="text-white font-medium">{cite.file_path}</span>{" "}
-                            <span className="text-indigo-400 font-semibold">
-                              #L{cite.start_line}–L{cite.end_line}
-                            </span>
-                          </div>
-                          {cite.github_url && (
-                            <a
-                              href={cite.github_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-indigo-400 hover:text-indigo-300 flex items-center gap-1 text-[10px] font-semibold"
-                            >
-                              Open <ExternalLink className="w-3 h-3" />
-                            </a>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
+            <div ref={chatBottomRef} />
           </div>
 
           {/* Question Input Form */}
-          <form onSubmit={handleAsk} className="p-3.5 border-t border-slate-800 bg-[#0c1017]">
-            <div className="relative">
+          <form onSubmit={handleSendMessage} className="p-3 border-t border-slate-800 bg-[#0c1017]">
+            <div className="relative flex items-center">
               <input
                 type="text"
-                value={question}
-                onChange={(e) => setQuestion(e.target.value)}
-                placeholder="e.g. Where is the Flask class defined?"
-                className="w-full pl-3.5 pr-16 py-2 rounded-lg bg-[#070a0f] border border-slate-700/80 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-mono transition"
+                value={inputQuery}
+                onChange={(e) => setInputQuery(e.target.value)}
+                placeholder="Ask architecture questions or follow-ups..."
+                className="w-full pl-3.5 pr-12 py-2.5 rounded-xl bg-[#070a0f] border border-slate-700/80 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-mono transition"
               />
               <button
                 type="submit"
-                disabled={isAsking || !question}
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 px-3 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white disabled:opacity-40 transition"
+                disabled={isAsking || !inputQuery.trim()}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-30 transition"
               >
-                Ask
+                <Send className="w-3.5 h-3.5" />
               </button>
+            </div>
+            <div className="flex items-center justify-between mt-1.5 px-1 text-[10px] text-slate-500 font-mono">
+              <span>Press Enter to send</span>
+              <span>Grounded with LLaMA 3.3 70B</span>
             </div>
           </form>
         </div>

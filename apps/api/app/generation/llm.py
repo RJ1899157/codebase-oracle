@@ -7,12 +7,13 @@ import urllib.request
 import urllib.error
 
 from app.core.config import get_settings
+from app.models import ChatMessage
 
 SYSTEM_PROMPT = """You are Codebase Oracle, a Principal AI Software Architect analyzing a GitHub repository.
-You are given a developer's question along with exact retrieved code chunks and knowledge-graph relationships.
+You are given a developer's question, previous conversation history, along with exact retrieved code chunks and knowledge-graph relationships.
 
 CRITICAL INSTRUCTIONS:
-1. Answer the question thoroughly, clearly, and technically using the retrieved context.
+1. Answer the question thoroughly, clearly, and technically using the retrieved context and prior conversation.
 2. Cite exact file paths, class names, and function names in backticks (e.g. `src/flask/app.py`).
 3. Explain how the components connect, what they do, and where they are located.
 4. If the context is completely unrelated or insufficient to answer, start your response with: "REFUSAL: Insufficient context in repository to answer this question."
@@ -34,10 +35,17 @@ GEMINI_MODELS = [
 ]
 
 
-def call_groq(prompt: str, api_key: str, model_name: str | None = None) -> str:
+def call_groq(prompt: str, api_key: str, model_name: str | None = None, history: list[ChatMessage] | None = None) -> str:
     url = "https://api.groq.com/openai/v1/chat/completions"
     models_to_try = [model_name] if model_name else []
     models_to_try.extend([m for m in GROQ_MODELS if m != model_name])
+
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    if history:
+        for msg in history[-6:]:
+            role = "assistant" if msg.role == "assistant" else "user"
+            messages.append({"role": role, "content": msg.content})
+    messages.append({"role": "user", "content": prompt})
 
     last_error = ""
     for model in models_to_try:
@@ -50,10 +58,7 @@ def call_groq(prompt: str, api_key: str, model_name: str | None = None) -> str:
         }
         payload = {
             "model": model,
-            "messages": [
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": prompt},
-            ],
+            "messages": messages,
             "temperature": 0.2,
         }
 
@@ -79,9 +84,22 @@ def call_groq(prompt: str, api_key: str, model_name: str | None = None) -> str:
     raise RuntimeError(f"Groq API Error: {last_error}")
 
 
-def call_gemini(prompt: str, api_key: str, model_name: str | None = None) -> str:
+def call_gemini(prompt: str, api_key: str, model_name: str | None = None, history: list[ChatMessage] | None = None) -> str:
     models_to_try = [model_name] if model_name else []
     models_to_try.extend([m for m in GEMINI_MODELS if m != model_name])
+
+    contents = []
+    if history:
+        for msg in history[-6:]:
+            role = "model" if msg.role == "assistant" else "user"
+            contents.append({"role": role, "parts": [{"text": msg.content}]})
+
+    contents.append(
+        {
+            "role": "user",
+            "parts": [{"text": f"{SYSTEM_PROMPT}\n\nUser Question and Context:\n{prompt}"}],
+        }
+    )
 
     last_error = ""
     for model in models_to_try:
@@ -91,13 +109,7 @@ def call_gemini(prompt: str, api_key: str, model_name: str | None = None) -> str
             url = f"https://generativelanguage.googleapis.com/{api_version}/models/{model}:generateContent?key={api_key.strip()}"
             headers = {"Content-Type": "application/json"}
             payload = {
-                "contents": [
-                    {
-                        "parts": [
-                            {"text": f"{SYSTEM_PROMPT}\n\nUser Question and Context:\n{prompt}"}
-                        ]
-                    }
-                ],
+                "contents": contents,
                 "generationConfig": {"temperature": 0.2},
             }
 
@@ -122,7 +134,7 @@ def call_gemini(prompt: str, api_key: str, model_name: str | None = None) -> str
     raise RuntimeError(f"Gemini API Error: {last_error}")
 
 
-def generate_with_llm(prompt: str) -> tuple[str, str | None]:
+def generate_with_llm(prompt: str, history: list[ChatMessage] | None = None) -> tuple[str, str | None]:
     """Returns (output_text, error_message)"""
     settings = get_settings()
     groq_key = settings.groq_api_key or os.getenv("GROQ_API_KEY", "")
@@ -131,7 +143,7 @@ def generate_with_llm(prompt: str) -> tuple[str, str | None]:
     # 1. Try Groq (LLaMA 3.3 70B)
     if groq_key and groq_key.strip():
         try:
-            return call_groq(prompt, groq_key, settings.groq_model), None
+            return call_groq(prompt, groq_key, settings.groq_model, history=history), None
         except Exception as e:
             print(f"[Codebase Oracle] Groq failed: {e}")
             if not gemini_key:
@@ -140,7 +152,7 @@ def generate_with_llm(prompt: str) -> tuple[str, str | None]:
     # 2. Try Gemini Fallback
     if gemini_key and gemini_key.strip():
         try:
-            return call_gemini(prompt, gemini_key, settings.gemini_model), None
+            return call_gemini(prompt, gemini_key, settings.gemini_model, history=history), None
         except Exception as e:
             print(f"[Codebase Oracle] Gemini failed: {e}")
             return "", f"Gemini Error: {str(e)}"

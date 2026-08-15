@@ -1,11 +1,12 @@
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
 
 from app.core.config import get_settings
 from app.evaluation.service import EvalTestCase, run_evaluation
 from app.graph.registry import global_registry
 from app.ingestion.github_repo import ingest_github_repo
-from app.models import AskRequest, GraphBatch, IngestRequest
+from app.models import ChatMessage, GraphBatch, IngestRequest
 from app.retrieval.pipeline import answer_question
 
 app = FastAPI(title="codebase-oracle API", version="0.1.0")
@@ -17,6 +18,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+class AskPayload(BaseModel):
+    github_url: str
+    question: str
+    history: list[dict[str, str]] = Field(default_factory=list)
 
 
 @app.get("/")
@@ -63,16 +70,22 @@ def ingest(request: IngestRequest) -> dict:
 
 
 @app.post("/ask")
-def ask(request: AskRequest) -> dict:
-    repo_data = global_registry.get(request.github_url)
+def ask(payload: AskPayload) -> dict:
+    repo_data = global_registry.get(payload.github_url)
     chunks = repo_data.chunks if repo_data else []
     batch = repo_data.batch if repo_data else GraphBatch(nodes=[], edges=[])
 
+    chat_history = [
+        ChatMessage(role=msg.get("role", "user"), content=msg.get("content", ""))
+        for msg in payload.history
+    ]
+
     result = answer_question(
-        question=request.question,
+        question=payload.question,
         chunks=chunks,
         batch=batch,
-        github_url=request.github_url,
+        github_url=payload.github_url,
+        history=chat_history,
     )
     return {
         "answer": result.answer,
