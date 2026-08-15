@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-
 @dataclass(frozen=True)
 class GraphNode:
     id: str
@@ -12,19 +11,16 @@ class GraphNode:
     start_line: int
     end_line: int
 
-
 @dataclass(frozen=True)
 class GraphEdge:
     source_id: str
     target_id: str
     relation: str
 
-
 @dataclass(frozen=True)
 class GraphBatch:
     nodes: list[GraphNode]
     edges: list[GraphEdge]
-
 
 @dataclass(frozen=True)
 class CodeChunk:
@@ -34,22 +30,26 @@ class CodeChunk:
     start_line: int
     end_line: int
 
-
 @dataclass(frozen=True)
 class EmbeddedChunk(CodeChunk):
     embedding: list[float]
-
 
 @dataclass(frozen=True)
 class AskRequest:
     github_url: str
     question: str
 
-
 @dataclass(frozen=True)
 class IngestRequest:
     github_url: str
 
+@dataclass(frozen=True)
+class IngestResult:
+    github_url: str
+    file_count: int
+    node_count: int
+    edge_count: int
+    chunk_count: int
 
 @dataclass(frozen=True)
 class Citation:
@@ -57,7 +57,6 @@ class Citation:
     start_line: int
     end_line: int
     github_url: str | None = None
-
 
 @dataclass(frozen=True)
 class AnswerResult:

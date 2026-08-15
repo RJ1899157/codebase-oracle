@@ -7,7 +7,7 @@ def test_chunk_text_splits_code_into_chunks() -> None:
 
     chunks = chunk_text(text, max_chars=20)
 
-    assert chunks == ["first block", "second block", "third block"]
+    assert [c.text for c in chunks] == ["first block", "second block", "third block"]
 
 
 def test_embed_chunk_returns_fixed_embedding_shape() -> None:

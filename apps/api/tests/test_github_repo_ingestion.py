@@ -1,15 +1,24 @@
 from pathlib import Path
 
-from app.ingestion.github_repo import IngestResult
-from app.ingestion.service import discover_python_files
+from app.ingestion.github_repo import process_repository
 
+def test_process_repository_extracts_graph_and_chunks(tmp_path: Path) -> None:
+    code_file = tmp_path / "calculator.py"
+    code_file.write_text(
+        """
+import math
 
-def test_discover_python_files_on_local_repo(tmp_path: Path) -> None:
-    (tmp_path / "a.py").write_text("print('a')\n", encoding="utf-8")
-    (tmp_path / "nested").mkdir()
-    (tmp_path / "nested" / "b.py").write_text("print('b')\n", encoding="utf-8")
+class Calculator:
+    def add(self, a, b):
+        return a + b
+""".strip(),
+        encoding="utf-8",
+    )
 
-    files = discover_python_files(tmp_path)
+    result, batch, chunks = process_repository(tmp_path, "https://github.com/example/calc")
 
-    assert len(files) == 2
-    assert all(path.suffix == ".py" for path in files)
+    assert result.file_count == 1
+    assert result.node_count > 0
+    assert result.edge_count > 0
+    assert result.chunk_count > 0
+    assert any(n.name == "Calculator" for n in batch.nodes)
