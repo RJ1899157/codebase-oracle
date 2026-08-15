@@ -1,22 +1,29 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "codebase-oracle-api"
 version = "0.1.0"
-description = "FastAPI backend for codebase-oracle"
-requires-python = ">=3.11"
+description = "FastAPI backend for codebase-oracle GraphRAG"
+readme = "README.md"
+requires-python = ">=3.10"
 dependencies = [
   "fastapi",
   "neo4j",
   "pydantic-settings",
-  "httpx2",
-  "pytest",
+  "python-dotenv",
   "tree-sitter",
   "tree-sitter-python",
   "uvicorn[standard]",
 ]
 
-[build-system]
-requires = ["setuptools>=68"]
-build-backend = "setuptools.build_meta"
+[project.optional-dependencies]
+test = [
+  "httpx2",
+  "pytest",
+]
 
-[tool.pytest.ini_options]
-testpaths = ["tests"]
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]

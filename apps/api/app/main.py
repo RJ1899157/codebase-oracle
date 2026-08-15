@@ -1,15 +1,15 @@
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.core.config import get_settings
 from app.evaluation.service import EvalTestCase, run_evaluation
 from app.graph.registry import global_registry
-from app.ingestion.github_repo import ingest_github_repo, process_repository
+from app.ingestion.github_repo import ingest_github_repo
 from app.models import AskRequest, GraphBatch, IngestRequest
 from app.retrieval.pipeline import answer_question
 
 app = FastAPI(title="codebase-oracle API", version="0.1.0")
 
-# Enable CORS for Next.js frontend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -19,9 +19,35 @@ app.add_middleware(
 )
 
 
+@app.get("/")
+def root() -> dict[str, str]:
+    return {
+        "service": "codebase-oracle API",
+        "status": "running",
+        "docs_url": "/docs",
+        "health_url": "/health",
+    }
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/status")
+def status() -> dict:
+    settings = get_settings()
+    active_llm = "None (Offline Fallback)"
+    if settings.groq_api_key:
+        active_llm = f"Groq LLaMA 3.3 70B ({settings.groq_model})"
+    elif settings.gemini_api_key:
+        active_llm = f"Google Gemini Flash ({settings.gemini_model})"
+
+    return {
+        "groq_configured": bool(settings.groq_api_key),
+        "gemini_configured": bool(settings.gemini_api_key),
+        "active_model": active_llm,
+    }
 
 
 @app.post("/ingest")
@@ -75,24 +101,11 @@ def get_graph(github_url: str = Query(..., description="The GitHub repository UR
     return graph_data
 
 
-@app.get("/")
-def root() -> dict[str, str]:
-    return {
-        "service": "codebase-oracle API",
-        "status": "running",
-        "docs_url": "/docs",
-        "health_url": "/health",
-    }
-
-
 @app.get("/evaluate")
 def evaluate(github_url: str = Query(..., description="The GitHub repository URL")) -> dict:
     repo_data = global_registry.get(github_url)
     if not repo_data:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Repository '{github_url}' not ingested yet.",
-        )
+        raise HTTPException(status_code=404, detail=f"Repository '{github_url}' not ingested yet.")
 
     benchmark_cases = [
         EvalTestCase(

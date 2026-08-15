@@ -6,13 +6,15 @@ from app.models import AnswerResult, Citation
 from app.retrieval.service import RetrievedChunk
 
 
-def format_context_for_prompt(question: str, context: list[RetrievedChunk]) -> str:
-    lines = [f"QUESTION: {question}\n", "RETRIEVED CONTEXT:"]
-    for i, item in enumerate(context, 1):
+def format_context_for_prompt(question: str, context: list[RetrievedChunk], max_chunks: int = 6) -> str:
+    lines = [f"QUESTION: {question}\n", "RETRIEVED CODE CONTEXT:"]
+    for i, item in enumerate(context[:max_chunks], 1):
+        # Truncate each individual chunk to at most 1800 characters to keep prompt tightly within LLM context limit
+        chunk_snippet = item.chunk.text[:1800]
         lines.append(
             f"\n--- Context [{i}] from {item.chunk.file_path} (lines {item.chunk.start_line}-{item.chunk.end_line}) [Source: {item.source}] ---"
         )
-        lines.append(item.chunk.text)
+        lines.append(chunk_snippet)
     return "\n".join(lines)
 
 
@@ -26,12 +28,12 @@ def generate_answer(
             answer="",
             citations=[],
             refused=True,
-            reason="insufficient_context",
+            reason="Insufficient context found in repository to answer this question accurately.",
         )
 
     # Build deep citations for the top matches
     citations: list[Citation] = []
-    for item in context[:3]:
+    for item in context[:4]:
         link = None
         if github_url is not None:
             link = build_github_line_link(
@@ -49,8 +51,8 @@ def generate_answer(
             )
         )
 
-    prompt = format_context_for_prompt(question, context)
-    llm_output = generate_with_llm(prompt)
+    prompt = format_context_for_prompt(question, context, max_chunks=6)
+    llm_output, error_msg = generate_with_llm(prompt)
 
     if llm_output.startswith("REFUSAL:"):
         return AnswerResult(
@@ -61,11 +63,20 @@ def generate_answer(
         )
 
     if not llm_output:
-        # Fallback summary if no API key is active
         top = context[0]
-        llm_output = (
-            f"Based on the repository code, the relevant implementation for '{question}' "
-            f"is located in `{top.chunk.file_path}` (lines {top.chunk.start_line}-{top.chunk.end_line})."
+        fallback_msg = (
+            f"**Local Graph Evidence Found**:\n"
+            f"The primary implementation for `{question}` is located in `{top.chunk.file_path}` "
+            f"(lines {top.chunk.start_line}–{top.chunk.end_line}).\n\n"
+        )
+        if error_msg:
+            fallback_msg += f"> ⚠️ **LLM Diagnostic Notice**: `{error_msg}`"
+
+        return AnswerResult(
+            answer=fallback_msg,
+            citations=citations,
+            refused=False,
+            reason=None,
         )
 
     return AnswerResult(
