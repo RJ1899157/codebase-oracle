@@ -24,3 +24,17 @@ class GraphEdge:
 class GraphBatch:
     nodes: list[GraphNode]
     edges: list[GraphEdge]
+
+
+@dataclass(frozen=True)
+class CodeChunk:
+    id: str
+    text: str
+    file_path: str
+    start_line: int
+    end_line: int
+
+
+@dataclass(frozen=True)
+class EmbeddedChunk(CodeChunk):
+    embedding: list[float]
