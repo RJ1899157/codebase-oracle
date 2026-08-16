@@ -1,15 +1,59 @@
+from __future__ import annotations
+
+import os
+from contextlib import asynccontextmanager
+from typing import AsyncIterator
+
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from app.core.config import get_settings
-from app.evaluation.service import EvalTestCase, run_evaluation
+from app.evaluation.service import run_evaluation
 from app.graph.registry import global_registry
+from app.graph.service import Neo4jGraphStore
 from app.ingestion.github_repo import ingest_github_repo
-from app.models import ChatMessage, GraphBatch, IngestRequest
+from app.models import (
+    ChatMessage,
+    CodeChunk,
+    EvalTestCase,
+    GraphBatch,
+    IngestRequest,
+)
 from app.retrieval.pipeline import answer_question
+from app.vectors.service import QdrantVectorStore
 
-app = FastAPI(title="codebase-oracle API", version="0.1.0")
+
+class AskPayload(BaseModel):
+    question: str
+    github_url: str | None = None
+    history: list[dict[str, str]] = []
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    settings = get_settings()
+
+    neo4j_store = Neo4jGraphStore(
+        uri=settings.neo4j_uri,
+        user=settings.neo4j_user,
+        password=settings.neo4j_password,
+    )
+    app.state.neo4j_store = neo4j_store
+
+    qdrant_store = QdrantVectorStore(
+        url=settings.qdrant_url,
+        api_key=settings.qdrant_api_key,
+    )
+    app.state.qdrant_store = qdrant_store
+
+    yield
+
+    neo4j_store.close()
+    qdrant_store.close()
+
+
+app = FastAPI(title="codebase-oracle-api", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -20,22 +64,6 @@ app.add_middleware(
 )
 
 
-class AskPayload(BaseModel):
-    github_url: str
-    question: str
-    history: list[dict[str, str]] = Field(default_factory=list)
-
-
-@app.get("/")
-def root() -> dict[str, str]:
-    return {
-        "service": "codebase-oracle API",
-        "status": "running",
-        "docs_url": "/docs",
-        "health_url": "/health",
-    }
-
-
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
@@ -43,17 +71,19 @@ def health() -> dict[str, str]:
 
 @app.get("/status")
 def status() -> dict:
-    settings = get_settings()
-    active_llm = "None (Offline Fallback)"
-    if settings.groq_api_key:
-        active_llm = f"Groq LLaMA 3.3 70B ({settings.groq_model})"
-    elif settings.gemini_api_key:
-        active_llm = f"Google Gemini Flash ({settings.gemini_model})"
+    groq_key = os.getenv("GROQ_API_KEY")
+    gemini_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+
+    active_model = "Local AST Retrieval Engine"
+    if groq_key:
+        active_model = "Groq LLaMA 3.3 70B (llama-3.3-70b-versatile)"
+    elif gemini_key:
+        active_model = "Google Gemini 2.0 Flash"
 
     return {
-        "groq_configured": bool(settings.groq_api_key),
-        "gemini_configured": bool(settings.gemini_api_key),
-        "active_model": active_llm,
+        "groq_configured": bool(groq_key),
+        "gemini_configured": bool(gemini_key),
+        "active_model": active_model,
     }
 
 
@@ -71,7 +101,7 @@ def ingest(request: IngestRequest) -> dict:
 
 @app.post("/ask")
 def ask(payload: AskPayload) -> dict:
-    repo_data = global_registry.get(payload.github_url)
+    repo_data = global_registry.get(payload.github_url) if payload.github_url else None
     chunks = repo_data.chunks if repo_data else []
     batch = repo_data.batch if repo_data else GraphBatch(nodes=[], edges=[])
 
@@ -117,26 +147,80 @@ def get_graph(
     return graph_data
 
 
+def _build_dynamic_eval_cases(repo_data) -> list[EvalTestCase]:
+    cases: list[EvalTestCase] = []
+
+    # Prioritize substantive non-test source code symbols
+    def is_valid_source_node(n) -> bool:
+        ext = n.file_path.split(".")[-1].lower() if "." in n.file_path else ""
+        if ext not in {"py", "ts", "js", "go", "rs", "java", "cpp", "c", "cs"}:
+            return False
+        if "test" in n.file_path.lower() or "benchmark" in n.file_path.lower():
+            return False
+        return len(n.name) <= 35 and n.name.isidentifier()
+
+    classes = [n for n in repo_data.batch.nodes if n.kind in {"class", "interface", "struct"} and is_valid_source_node(n)]
+    functions = [n for n in repo_data.batch.nodes if n.kind == "function" and is_valid_source_node(n)]
+
+    # Fallback to any node if specific filters yield nothing
+    if not classes:
+        classes = [n for n in repo_data.batch.nodes if n.kind in {"class", "interface", "struct"}]
+    if not functions:
+        functions = [n for n in repo_data.batch.nodes if n.kind == "function"]
+
+    if classes:
+        target_cls = classes[0]
+        cases.append(
+            EvalTestCase(
+                question=f"Where is the {target_cls.name} class defined?",
+                ground_truth_answer=f"{target_cls.name} is defined in {target_cls.file_path}",
+                expected_files=[target_cls.file_path],
+                should_refuse=False,
+            )
+        )
+
+    if functions:
+        target_fn = functions[0]
+        cases.append(
+            EvalTestCase(
+                question=f"What is the implementation and role of {target_fn.name} in {target_fn.file_path}?",
+                ground_truth_answer=f"{target_fn.name} is implemented in {target_fn.file_path}",
+                expected_files=[target_fn.file_path],
+                should_refuse=False,
+            )
+        )
+
+    if len(classes) > 1:
+        target_cls_2 = classes[1]
+        cases.append(
+            EvalTestCase(
+                question=f"How is {target_cls_2.name} structured in {target_cls_2.file_path}?",
+                ground_truth_answer=f"{target_cls_2.name} is in {target_cls_2.file_path}",
+                expected_files=[target_cls_2.file_path],
+                should_refuse=False,
+            )
+        )
+
+    # Negative refusal test case (hallucination defense)
+    cases.append(
+        EvalTestCase(
+            question="How does quantum teleportation neural blockchain consensus work in this repo?",
+            ground_truth_answer="",
+            expected_files=[],
+            should_refuse=True,
+        )
+    )
+
+    return cases
+
+
 @app.get("/evaluate")
 def evaluate(github_url: str = Query(..., description="The GitHub repository URL")) -> dict:
     repo_data = global_registry.get(github_url)
     if not repo_data:
         raise HTTPException(status_code=404, detail=f"Repository '{github_url}' not ingested yet.")
 
-    benchmark_cases = [
-        EvalTestCase(
-            question="Where is Calculator or core math class defined?",
-            ground_truth_answer="Calculator is defined in calculator.py",
-            expected_files=["calculator.py", "math_lib.py"],
-            should_refuse=False,
-        ),
-        EvalTestCase(
-            question="How does quantum teleportation blockchain work in this repo?",
-            ground_truth_answer="",
-            expected_files=[],
-            should_refuse=True,
-        ),
-    ]
+    benchmark_cases = _build_dynamic_eval_cases(repo_data)
 
     report = run_evaluation(
         test_cases=benchmark_cases,

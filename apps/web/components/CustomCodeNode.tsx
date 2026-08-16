@@ -20,50 +20,58 @@ const KIND_CONFIG: Record<
   {
     label: string;
     badgeBg: string;
+    badgeText: string;
     indicatorColor: string;
     icon: React.ElementType;
   }
 > = {
   file: {
     label: "MODULE",
-    badgeBg: "bg-emerald-950/40 border border-emerald-800/40 text-emerald-300",
+    badgeBg: "bg-[#111111] border border-[#27272a] text-[#10b981]",
+    badgeText: "text-[#10b981]",
     indicatorColor: "#10b981",
     icon: FileCode,
   },
   class: {
     label: "CLASS",
-    badgeBg: "bg-amber-950/40 border border-amber-800/40 text-amber-300",
+    badgeBg: "bg-[#111111] border border-[#27272a] text-[#f59e0b]",
+    badgeText: "text-[#f59e0b]",
     indicatorColor: "#f59e0b",
     icon: Box,
   },
   interface: {
     label: "INTERFACE",
-    badgeBg: "bg-amber-950/40 border border-amber-800/40 text-amber-300",
+    badgeBg: "bg-[#111111] border border-[#27272a] text-[#f59e0b]",
+    badgeText: "text-[#f59e0b]",
     indicatorColor: "#f59e0b",
     icon: Box,
   },
   struct: {
     label: "STRUCT",
-    badgeBg: "bg-amber-950/40 border border-amber-800/40 text-amber-300",
+    badgeBg: "bg-[#111111] border border-[#27272a] text-[#f59e0b]",
+    badgeText: "text-[#f59e0b]",
     indicatorColor: "#f59e0b",
     icon: Box,
   },
   function: {
     label: "FUNCTION",
-    badgeBg: "bg-blue-950/40 border border-blue-800/40 text-blue-300",
-    indicatorColor: "#3b82f6",
+    badgeBg: "bg-[#111111] border border-[#27272a] text-[#38bdf8]",
+    badgeText: "text-[#38bdf8]",
+    indicatorColor: "#38bdf8",
     icon: Zap,
   },
   import: {
     label: "IMPORT",
-    badgeBg: "bg-zinc-800/60 border border-zinc-700/60 text-zinc-300",
-    indicatorColor: "#8b949e",
+    badgeBg: "bg-[#111111] border border-[#27272a] text-[#a1a1aa]",
+    badgeText: "text-[#a1a1aa]",
+    indicatorColor: "#a1a1aa",
     icon: ArrowRightLeft,
   },
   call: {
     label: "CALL",
-    badgeBg: "bg-zinc-800/60 border border-zinc-700/60 text-zinc-300",
-    indicatorColor: "#8b949e",
+    badgeBg: "bg-[#111111] border border-[#27272a] text-[#a1a1aa]",
+    badgeText: "text-[#a1a1aa]",
+    indicatorColor: "#a1a1aa",
     icon: Code2,
   },
 };
@@ -71,8 +79,9 @@ const KIND_CONFIG: Record<
 export const CustomCodeNode = memo(({ data, selected }: CustomCodeNodeProps) => {
   const config = KIND_CONFIG[data.kind] || {
     label: (data.kind || "SYMBOL").toUpperCase(),
-    badgeBg: "bg-zinc-800 border border-zinc-700 text-zinc-300",
-    indicatorColor: "#8b949e",
+    badgeBg: "bg-[#111111] border border-[#27272a] text-[#a1a1aa]",
+    badgeText: "text-[#a1a1aa]",
+    indicatorColor: "#a1a1aa",
     icon: Code2,
   };
 
@@ -83,15 +92,15 @@ export const CustomCodeNode = memo(({ data, selected }: CustomCodeNodeProps) => 
     <div
       className={`group relative min-w-[210px] max-w-[280px] rounded-lg p-3 transition-all duration-150 ${
         selected
-          ? "bg-[#1f242c] border-2 border-blue-500 shadow-md"
-          : "bg-[#161b22] hover:bg-[#1c2128] border border-[#30363d] hover:border-[#484f58]"
+          ? "bg-[#141414] border-2 border-white shadow-xl scale-[1.02]"
+          : "bg-[#0a0a0a] hover:bg-[#111111] border border-[#222222] hover:border-[#383838]"
       }`}
     >
       {/* Top, Bottom, Left, Right Handles */}
-      <Handle type="target" position={Position.Top} className="!bg-[#8b949e]" />
-      <Handle type="source" position={Position.Bottom} className="!bg-[#8b949e]" />
-      <Handle type="target" position={Position.Left} id="left" className="!bg-[#8b949e]" />
-      <Handle type="source" position={Position.Right} id="right" className="!bg-[#8b949e]" />
+      <Handle type="target" position={Position.Top} className="!bg-[#71717a]" />
+      <Handle type="source" position={Position.Bottom} className="!bg-[#71717a]" />
+      <Handle type="target" position={Position.Left} id="left" className="!bg-[#71717a]" />
+      <Handle type="source" position={Position.Right} id="right" className="!bg-[#71717a]" />
 
       {/* Header: Kind Badge & Line Count */}
       <div className="flex items-center justify-between gap-2 mb-2">
@@ -103,7 +112,7 @@ export const CustomCodeNode = memo(({ data, selected }: CustomCodeNodeProps) => 
         </div>
 
         {data.start_line && (
-          <span className="text-[10px] font-mono text-[#8b949e] font-medium">
+          <span className="text-[10px] font-mono text-[#71717a] font-semibold">
             L{data.start_line}
             {data.end_line && data.end_line !== data.start_line ? `–${data.end_line}` : ""}
           </span>
@@ -117,7 +126,7 @@ export const CustomCodeNode = memo(({ data, selected }: CustomCodeNodeProps) => 
           style={{ backgroundColor: config.indicatorColor }}
         />
         <h3
-          className="text-xs font-semibold text-[#f0f6fc] font-mono tracking-tight truncate group-hover:text-blue-300 transition"
+          className="text-xs font-bold text-white font-mono tracking-tight truncate group-hover:text-[#38bdf8] transition"
           title={data.label}
         >
           {data.label}
@@ -126,11 +135,11 @@ export const CustomCodeNode = memo(({ data, selected }: CustomCodeNodeProps) => 
 
       {/* Subtitle File Path */}
       {data.file_path && (
-        <div className="mt-2 pt-1.5 border-t border-[#30363d] flex items-center justify-between text-[10px] font-mono text-[#8b949e]">
+        <div className="mt-2 pt-1.5 border-t border-[#1f1f1f] flex items-center justify-between text-[10px] font-mono text-[#71717a]">
           <span className="truncate max-w-[170px]" title={data.file_path}>
             {fileName || data.file_path}
           </span>
-          <span className="text-[9px] text-[#6e7681] font-semibold uppercase">AST</span>
+          <span className="text-[9px] text-[#52525b] font-bold uppercase">AST</span>
         </div>
       )}
     </div>

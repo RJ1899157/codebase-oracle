@@ -24,13 +24,11 @@ import {
   Check,
   Copy,
   Trash2,
-  Box,
-  FileCode,
-  Zap,
   Gauge,
   HelpCircle,
   X,
   ArrowRight,
+  Zap,
 } from "lucide-react";
 
 import { CustomCodeNode } from "@/components/CustomCodeNode";
@@ -56,51 +54,51 @@ const nodeTypes = {
 };
 
 const DEMO_REPOSITORIES = [
-  { name: "FastAPI", url: "https://github.com/fastapi/fastapi", desc: "Python Async API Framework" },
-  { name: "Flask", url: "https://github.com/pallets/flask", desc: "Python WSGI Microframework" },
-  { name: "Express", url: "https://github.com/expressjs/express", desc: "Node.js Web Framework" },
-  { name: "Tokio", url: "https://github.com/tokio-rs/tokio", desc: "Rust Async Runtime" },
+  { name: "FastAPI", url: "https://github.com/fastapi/fastapi" },
+  { name: "Flask", url: "https://github.com/pallets/flask" },
+  { name: "Express", url: "https://github.com/expressjs/express" },
+  { name: "Tokio", url: "https://github.com/tokio-rs/tokio" },
 ];
 
 function MarkdownRenderer({ content }: { content: string }) {
   const lines = content.split("\n");
   return (
-    <div className="space-y-2 text-xs leading-relaxed text-[#c9d1d9]">
+    <div className="space-y-2 text-xs leading-relaxed text-[#d4d4d8]">
       {lines.map((line, i) => {
         const trimmed = line.trim();
         if (trimmed.startsWith("### ")) {
           return (
-            <h4 key={i} className="text-xs font-bold text-[#58a6ff] uppercase tracking-wider pt-2 font-mono flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#58a6ff]" />
+            <h4 key={i} className="text-xs font-bold text-[#38bdf8] uppercase tracking-wider pt-2 font-mono flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#38bdf8]" />
               {trimmed.slice(4)}
             </h4>
           );
         }
         if (trimmed.startsWith("## ")) {
           return (
-            <h3 key={i} className="text-sm font-bold text-[#f0f6fc] uppercase tracking-wider pt-2.5 font-mono border-b border-[#30363d] pb-1">
+            <h3 key={i} className="text-sm font-bold text-white uppercase tracking-wider pt-2.5 font-mono border-b border-[#27272a] pb-1">
               {trimmed.slice(3)}
             </h3>
           );
         }
         if (trimmed.startsWith("# ")) {
           return (
-            <h2 key={i} className="text-base font-extrabold text-[#f0f6fc] uppercase tracking-wider pt-3 font-mono">
+            <h2 key={i} className="text-base font-extrabold text-white uppercase tracking-wider pt-3 font-mono">
               {trimmed.slice(2)}
             </h2>
           );
         }
         if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
           return (
-            <div key={i} className="flex items-start gap-2 ml-1 text-[#c9d1d9]">
-              <span className="text-[#58a6ff] font-bold mt-0.5">•</span>
+            <div key={i} className="flex items-start gap-2 ml-1 text-[#d4d4d8]">
+              <span className="text-[#38bdf8] font-bold mt-0.5">•</span>
               <span>{formatInlineMarkdown(trimmed.slice(2))}</span>
             </div>
           );
         }
         if (trimmed.startsWith("> ")) {
           return (
-            <blockquote key={i} className="p-3 rounded bg-[#161b22] border-l-2 border-[#10b981] text-[#8b949e] italic text-[11px]">
+            <blockquote key={i} className="p-2.5 rounded bg-[#111111] border-l-2 border-[#38bdf8] text-[#a1a1aa] italic text-[11px]">
               {formatInlineMarkdown(trimmed.slice(2))}
             </blockquote>
           );
@@ -122,14 +120,14 @@ function formatInlineMarkdown(text: string) {
   return parts.map((part, idx) => {
     if (part.startsWith("`") && part.endsWith("`")) {
       return (
-        <code key={idx} className="px-1.5 py-0.5 rounded bg-[#161b22] border border-[#30363d] text-[#79c0ff] font-mono text-[11px] font-medium">
+        <code key={idx} className="px-1.5 py-0.5 rounded bg-[#18181b] border border-[#27272a] text-[#38bdf8] font-mono text-[11px] font-semibold">
           {part.slice(1, -1)}
         </code>
       );
     }
     if (part.startsWith("**") && part.endsWith("**")) {
       return (
-        <strong key={idx} className="font-semibold text-[#f0f6fc]">
+        <strong key={idx} className="font-bold text-white">
           {part.slice(2, -2)}
         </strong>
       );
@@ -335,63 +333,58 @@ export default function App() {
   };
 
   return (
-    <div className="flex flex-col w-screen h-screen overflow-hidden bg-[#0d1117] text-[#f0f6fc] font-sans">
+    <div className="flex flex-col w-screen h-screen overflow-hidden bg-[#000000] text-[#ededed] font-sans">
       {/* ========================================================================= */}
-      {/* ZONE 1: TOP COMMAND BAR (Linear / Supabase Engineering Style) */}
+      {/* ZONE 1: VERCEL SHIP HEADER (Solid 56px Bar with 1-Click Samples) */}
       {/* ========================================================================= */}
-      <header className="h-16 px-5 border-b border-[#30363d] bg-[#161b22] flex items-center justify-between shrink-0 z-30">
-        {/* Brand Logo & Name */}
+      <header className="h-14 px-5 border-b border-[#222222] bg-[#0a0a0a] flex items-center justify-between shrink-0 z-30">
+        {/* Left: Brand Icon & Title */}
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-[#21262d] border border-[#30363d] flex items-center justify-center text-[#10b981]">
-            <Code2 className="w-4 h-4" />
+          <div className="w-7 h-7 rounded-md bg-white text-black flex items-center justify-center font-black text-xs shadow-sm">
+            ▲
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-bold text-[#f0f6fc] tracking-tight font-mono">
-                Codebase Oracle
-              </span>
-              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#21262d] text-[#8b949e] border border-[#30363d] font-mono">
-                GraphRAG 2.0
-              </span>
-            </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-bold text-white tracking-tight font-mono">
+              Codebase Oracle
+            </span>
+            <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#18181b] text-[#a1a1aa] border border-[#27272a] font-mono">
+              GraphRAG 2.0
+            </span>
           </div>
         </div>
 
-        {/* Repository Ingest Bar & 1-Click Demo Repositories */}
-        <div className="flex flex-col items-center gap-1.5 max-w-2xl w-full mx-6">
-          <div className="flex items-center gap-2 w-full">
-            <div className="relative flex-1">
-              <GitBranch className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#8b949e]" />
-              <input
-                type="text"
-                value={githubUrl}
-                onChange={(e) => setGithubUrl(e.target.value)}
-                placeholder="https://github.com/owner/repository"
-                className="w-full pl-9 pr-3 py-1.5 rounded-md bg-[#0d1117] border border-[#30363d] text-xs text-[#f0f6fc] placeholder-[#6e7681] focus:outline-none focus:border-[#3b82f6] font-mono transition"
-              />
-            </div>
-            <button
-              onClick={() => handleIngest()}
-              disabled={isIngesting || !githubUrl.trim()}
-              className="px-3.5 py-1.5 rounded-md bg-[#10b981] hover:bg-[#059669] text-white font-semibold text-xs flex items-center gap-1.5 disabled:opacity-40 transition shrink-0"
-            >
-              {isIngesting ? (
-                <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  Parsing AST...
-                </>
-              ) : (
-                <>
-                  <Zap className="w-3.5 h-3.5 fill-white" />
-                  Index Repository
-                </>
-              )}
-            </button>
+        {/* Center: Ingest Search Bar & Quick Sample Buttons */}
+        <div className="flex items-center gap-2 max-w-2xl w-full mx-4">
+          <div className="relative flex-1">
+            <GitBranch className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#71717a]" />
+            <input
+              type="text"
+              value={githubUrl}
+              onChange={(e) => setGithubUrl(e.target.value)}
+              placeholder="https://github.com/owner/repository"
+              className="w-full pl-9 pr-3 py-1.5 rounded-md bg-[#000000] border border-[#27272a] text-xs text-white placeholder-[#52525b] focus:outline-none focus:border-white font-mono transition"
+            />
           </div>
+          <button
+            onClick={() => handleIngest()}
+            disabled={isIngesting || !githubUrl.trim()}
+            className="px-3.5 py-1.5 rounded-md bg-white hover:bg-[#e4e4e7] text-black font-bold text-xs flex items-center gap-1.5 disabled:opacity-40 transition shrink-0"
+          >
+            {isIngesting ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                Parsing AST...
+              </>
+            ) : (
+              <>
+                <Zap className="w-3.5 h-3.5 fill-black" />
+                Index Repo
+              </>
+            )}
+          </button>
 
-          {/* Quick 1-Click Demo Repositories */}
-          <div className="flex items-center gap-1.5 text-[11px] font-mono text-[#8b949e]">
-            <span>Try sample:</span>
+          {/* Quick Demo Repositories */}
+          <div className="hidden lg:flex items-center gap-1 text-[11px] font-mono text-[#71717a] ml-1">
             {DEMO_REPOSITORIES.map((repo) => (
               <button
                 key={repo.name}
@@ -399,8 +392,7 @@ export default function App() {
                   setGithubUrl(repo.url);
                   handleIngest(repo.url);
                 }}
-                className="px-2 py-0.5 rounded bg-[#21262d] hover:bg-[#30363d] hover:text-[#f0f6fc] text-[#c9d1d9] border border-[#30363d] transition"
-                title={repo.desc}
+                className="px-2 py-1 rounded bg-[#18181b] hover:bg-[#27272a] hover:text-white text-[#a1a1aa] border border-[#27272a] transition"
               >
                 {repo.name}
               </button>
@@ -408,27 +400,27 @@ export default function App() {
           </div>
         </div>
 
-        {/* Telemetry Status & Actions */}
+        {/* Right: Telemetry Status & Actions */}
         <div className="flex items-center gap-3 font-mono text-xs">
-          <div className="flex items-center gap-2 px-2.5 py-1 rounded-md bg-[#21262d] border border-[#30363d] text-[11px] text-[#c9d1d9]">
-            <span className="w-2 h-2 rounded-full bg-[#10b981]" />
-            <span className="truncate max-w-[140px]">{activeModel}</span>
+          <div className="flex items-center gap-2 px-2.5 py-1 rounded-md bg-[#111111] border border-[#222222] text-[11px] text-[#a1a1aa]">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#10b981]" />
+            <span className="truncate max-w-[140px] font-medium">{activeModel}</span>
           </div>
 
           {ingestStats && (
-            <div className="hidden xl:flex items-center gap-2 text-[11px] text-[#8b949e]">
-              <span className="px-2 py-1 rounded bg-[#21262d] border border-[#30363d]">
-                <strong className="text-[#f0f6fc]">{ingestStats.node_count}</strong> nodes
+            <div className="hidden xl:flex items-center gap-1.5 text-[11px] text-[#71717a]">
+              <span className="px-2 py-1 rounded bg-[#111111] border border-[#222222]">
+                <strong className="text-white">{ingestStats.node_count}</strong> nodes
               </span>
-              <span className="px-2 py-1 rounded bg-[#21262d] border border-[#30363d]">
-                <strong className="text-[#f0f6fc]">{ingestStats.edge_count}</strong> edges
+              <span className="px-2 py-1 rounded bg-[#111111] border border-[#222222]">
+                <strong className="text-white">{ingestStats.edge_count}</strong> rels
               </span>
             </div>
           )}
 
           <button
             onClick={() => setShowHelpGuide(!showHelpGuide)}
-            className="p-1.5 rounded-md hover:bg-[#21262d] text-[#8b949e] hover:text-[#f0f6fc] border border-transparent hover:border-[#30363d] transition"
+            className="p-1.5 rounded-md hover:bg-[#18181b] text-[#71717a] hover:text-white border border-transparent hover:border-[#27272a] transition"
             title="Toggle Onboarding Guide"
           >
             <HelpCircle className="w-4 h-4" />
@@ -437,36 +429,36 @@ export default function App() {
       </header>
 
       {/* ========================================================================= */}
-      {/* GUIDED STEP-BY-STEP ONBOARDING BANNER (Easily Accessible) */}
+      {/* GUIDED STEP-BY-STEP ONBOARDING BANNER */}
       {/* ========================================================================= */}
       {showHelpGuide && (
-        <div className="px-5 py-2 border-b border-[#30363d] bg-[#161b22]/70 flex items-center justify-between text-xs text-[#8b949e] font-mono">
-          <div className="flex items-center gap-6">
-            <span className="font-bold text-[#c9d1d9] uppercase tracking-wider">Quick Start Guide:</span>
+        <div className="px-5 py-2 border-b border-[#222222] bg-[#0a0a0a] flex items-center justify-between text-xs text-[#a1a1aa] font-mono">
+          <div className="flex items-center gap-5">
+            <span className="font-bold text-white uppercase tracking-wider">Quick Start:</span>
             <div className="flex items-center gap-2">
-              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${!githubUrl ? "bg-[#3b82f6] text-white" : "bg-[#21262d] text-[#c9d1d9]"}`}>
-                Step 1
+              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${!githubUrl ? "bg-white text-black" : "bg-[#18181b] text-[#a1a1aa]"}`}>
+                1
               </span>
-              <span>Paste repo URL & click Index</span>
+              <span>Paste repo URL or click sample</span>
             </div>
-            <ArrowRight className="w-3.5 h-3.5 text-[#484f58]" />
+            <ArrowRight className="w-3 h-3 text-[#52525b]" />
             <div className="flex items-center gap-2">
-              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${nodes.length > 0 ? "bg-[#3b82f6] text-white" : "bg-[#21262d] text-[#c9d1d9]"}`}>
-                Step 2
+              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${nodes.length > 0 ? "bg-white text-black" : "bg-[#18181b] text-[#a1a1aa]"}`}>
+                2
               </span>
               <span>Filter symbols & explore technical blueprint</span>
             </div>
-            <ArrowRight className="w-3.5 h-3.5 text-[#484f58]" />
+            <ArrowRight className="w-3 h-3 text-[#52525b]" />
             <div className="flex items-center gap-2">
-              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${messages.length > 0 ? "bg-[#3b82f6] text-white" : "bg-[#21262d] text-[#c9d1d9]"}`}>
-                Step 3
+              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${messages.length > 0 ? "bg-white text-black" : "bg-[#18181b] text-[#a1a1aa]"}`}>
+                3
               </span>
-              <span>Ask architectural questions with citations</span>
+              <span>Ask questions with verified code citations</span>
             </div>
           </div>
           <button
             onClick={() => setShowHelpGuide(false)}
-            className="text-[#6e7681] hover:text-[#f0f6fc] text-[11px]"
+            className="text-[#71717a] hover:text-white text-[11px]"
           >
             Dismiss
           </button>
@@ -480,13 +472,13 @@ export default function App() {
         {/* ======================================================================= */}
         {/* ZONE 2: TECHNICAL BLUEPRINT GRAPH EXPLORER (Left 65%) */}
         {/* ======================================================================= */}
-        <section className="flex-1 flex flex-col relative border-r border-[#30363d] bg-[#0d1117]">
+        <section className="flex-1 flex flex-col relative border-r border-[#222222] bg-[#000000]">
           {/* Graph Toolbar: Search, Kind Filter Tabs, Layout Switcher */}
-          <div className="h-12 px-4 border-b border-[#30363d] bg-[#161b22] flex items-center justify-between shrink-0 z-10">
+          <div className="h-11 px-4 border-b border-[#222222] bg-[#0a0a0a] flex items-center justify-between shrink-0 z-10">
             {/* Search Filter */}
             <div className="flex items-center gap-2">
               <div className="relative">
-                <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[#8b949e]" />
+                <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[#71717a]" />
                 <input
                   type="text"
                   value={searchQuery}
@@ -494,12 +486,12 @@ export default function App() {
                     setSearchQuery(e.target.value);
                     filterNodes(selectedKind, e.target.value, allNodes, allEdges);
                   }}
-                  placeholder="Filter symbols in graph..."
-                  className="pl-8 pr-2.5 py-1 rounded bg-[#0d1117] border border-[#30363d] text-xs text-[#f0f6fc] placeholder-[#6e7681] focus:outline-none focus:border-[#3b82f6] w-48 font-mono"
+                  placeholder="Filter symbols..."
+                  className="pl-8 pr-2.5 py-1 rounded bg-[#000000] border border-[#27272a] text-xs text-white placeholder-[#52525b] focus:outline-none focus:border-white w-44 font-mono"
                 />
               </div>
 
-              <div className="h-4 w-[1px] bg-[#30363d]" />
+              <div className="h-4 w-[1px] bg-[#222222]" />
 
               {/* Symbol Kind Filter Tabs */}
               <div className="flex items-center gap-1 font-mono text-[11px]">
@@ -510,10 +502,10 @@ export default function App() {
                       setSelectedKind(k);
                       filterNodes(k, searchQuery, allNodes, allEdges);
                     }}
-                    className={`px-2.5 py-1 rounded font-medium uppercase transition ${
+                    className={`px-2.5 py-1 rounded font-semibold uppercase transition ${
                       selectedKind === k
-                        ? "bg-[#21262d] text-[#f0f6fc] border border-[#484f58]"
-                        : "text-[#8b949e] hover:text-[#f0f6fc] hover:bg-[#21262d]/50"
+                        ? "bg-white text-black"
+                        : "text-[#a1a1aa] hover:text-white hover:bg-[#18181b]"
                     }`}
                   >
                     {k}
@@ -524,13 +516,13 @@ export default function App() {
 
             {/* Layout Mode Switcher */}
             <div className="flex items-center gap-1 font-mono text-[11px]">
-              <span className="text-[#6e7681] mr-1">Layout:</span>
+              <span className="text-[#71717a] mr-1">Layout:</span>
               <button
                 onClick={() => handleLayoutToggle("layered")}
                 className={`px-2.5 py-1 rounded transition ${
                   layoutMode === "layered"
-                    ? "bg-[#21262d] text-[#58a6ff] border border-[#30363d] font-semibold"
-                    : "text-[#8b949e] hover:text-[#f0f6fc]"
+                    ? "bg-[#18181b] text-white border border-[#27272a] font-bold"
+                    : "text-[#a1a1aa] hover:text-white"
                 }`}
               >
                 Blueprint Tree
@@ -539,8 +531,8 @@ export default function App() {
                 onClick={() => handleLayoutToggle("radial")}
                 className={`px-2.5 py-1 rounded transition ${
                   layoutMode === "radial"
-                    ? "bg-[#21262d] text-[#58a6ff] border border-[#30363d] font-semibold"
-                    : "text-[#8b949e] hover:text-[#f0f6fc]"
+                    ? "bg-[#18181b] text-white border border-[#27272a] font-bold"
+                    : "text-[#a1a1aa] hover:text-white"
                 }`}
               >
                 Orbital Galaxy
@@ -552,13 +544,13 @@ export default function App() {
           <div className="flex-1 relative">
             {nodes.length === 0 ? (
               <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
-                <div className="w-16 h-16 rounded-xl bg-[#161b22] border border-[#30363d] flex items-center justify-center mb-4 text-[#8b949e]">
+                <div className="w-16 h-16 rounded-xl bg-[#0a0a0a] border border-[#222222] flex items-center justify-center mb-4 text-[#71717a]">
                   <Layers className="w-8 h-8" />
                 </div>
-                <h3 className="text-sm font-semibold text-[#f0f6fc] uppercase tracking-wider font-mono">
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider font-mono">
                   Knowledge Graph Canvas
                 </h3>
-                <p className="text-xs text-[#8b949e] font-mono max-w-sm mt-1.5 leading-relaxed">
+                <p className="text-xs text-[#a1a1aa] font-mono max-w-sm mt-1.5 leading-relaxed">
                   Enter any GitHub repository URL in the header or select a sample repository to inspect AST nodes and module relationships.
                 </p>
               </div>
@@ -576,18 +568,18 @@ export default function App() {
                   minZoom={0.05}
                   maxZoom={2.5}
                 >
-                  <Background color="#30363d" gap={24} size={1} />
+                  <Background color="#1f1f1f" gap={24} size={1} />
                   <Controls className="!left-4 !bottom-4" />
                   <MiniMap
-                    className="!left-4 !bottom-16 rounded-lg overflow-hidden border border-[#30363d]"
+                    className="!left-4 !bottom-16 rounded-md overflow-hidden border border-[#222222]"
                     nodeColor={(node: any) => {
                       const k = node.data?.kind;
                       if (k === "class") return "#f59e0b";
-                      if (k === "function") return "#3b82f6";
+                      if (k === "function") return "#38bdf8";
                       if (k === "file") return "#10b981";
-                      return "#8b949e";
+                      return "#a1a1aa";
                     }}
-                    maskColor="rgba(13, 17, 23, 0.85)"
+                    maskColor="rgba(0, 0, 0, 0.85)"
                   />
                 </ReactFlow>
               </div>
@@ -595,33 +587,33 @@ export default function App() {
 
             {/* Bottom Docked Selected Symbol Inspector */}
             {selectedNode && (
-              <div className="absolute bottom-4 right-4 z-20 w-96 rounded-lg border border-[#30363d] bg-[#161b22] p-4 shadow-xl font-mono">
-                <div className="flex items-start justify-between gap-2 border-b border-[#30363d] pb-2.5">
+              <div className="absolute bottom-4 right-4 z-20 w-96 rounded-lg border border-[#27272a] bg-[#0a0a0a] p-4 shadow-2xl font-mono">
+                <div className="flex items-start justify-between gap-2 border-b border-[#222222] pb-2.5">
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-[#21262d] text-[#58a6ff] border border-[#30363d]">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-[#18181b] text-[#38bdf8] border border-[#27272a]">
                         {selectedNode.kind || "SYMBOL"}
                       </span>
-                      <span className="text-xs font-bold text-[#f0f6fc] truncate max-w-[190px]">
+                      <span className="text-xs font-bold text-white truncate max-w-[190px]">
                         {selectedNode.label}
                       </span>
                     </div>
-                    <p className="text-[10px] text-[#8b949e] mt-1 truncate" title={selectedNode.file_path}>
+                    <p className="text-[10px] text-[#a1a1aa] mt-1 truncate" title={selectedNode.file_path}>
                       {selectedNode.file_path}
                     </p>
                   </div>
                   <button
                     onClick={() => setSelectedNode(null)}
-                    className="text-[#6e7681] hover:text-[#f0f6fc] p-1 rounded hover:bg-[#21262d]"
+                    className="text-[#71717a] hover:text-white p-1 rounded hover:bg-[#18181b]"
                   >
                     <X className="w-4 h-4" />
                   </button>
                 </div>
 
                 <div className="mt-3 flex items-center justify-between">
-                  <span className="text-[11px] text-[#8b949e]">
+                  <span className="text-[11px] text-[#a1a1aa]">
                     Lines:{" "}
-                    <strong className="text-[#f0f6fc]">
+                    <strong className="text-white">
                       {selectedNode.start_line}
                       {selectedNode.end_line && selectedNode.end_line !== selectedNode.start_line
                         ? `–${selectedNode.end_line}`
@@ -637,7 +629,7 @@ export default function App() {
                           `Explain the implementation and role of \`${selectedNode.label}\` in \`${selectedNode.file_path}\`.`
                         )
                       }
-                      className="px-2.5 py-1 rounded bg-[#21262d] hover:bg-[#30363d] border border-[#30363d] text-[#58a6ff] text-[10px] font-bold transition"
+                      className="px-2.5 py-1 rounded bg-[#18181b] hover:bg-[#27272a] border border-[#27272a] text-[#38bdf8] text-[10px] font-bold transition"
                     >
                       Explain with AI
                     </button>
@@ -647,9 +639,9 @@ export default function App() {
                         href={`${githubUrl}/blob/main/${selectedNode.file_path}#L${selectedNode.start_line}-L${selectedNode.end_line}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="px-2.5 py-1 rounded bg-[#21262d] hover:bg-[#30363d] border border-[#30363d] text-[#f0f6fc] text-[10px] font-medium flex items-center gap-1 transition"
+                        className="px-2.5 py-1 rounded bg-[#18181b] hover:bg-[#27272a] border border-[#27272a] text-white text-[10px] font-medium flex items-center gap-1 transition"
                       >
-                        GitHub <ExternalLink className="w-3 h-3 text-[#8b949e]" />
+                        GitHub <ExternalLink className="w-3 h-3 text-[#71717a]" />
                       </a>
                     )}
                   </div>
@@ -662,19 +654,19 @@ export default function App() {
         {/* ======================================================================= */}
         {/* ZONE 3: ARCHITECTURE AI STUDIO (Right 35% Fixed Panel) */}
         {/* ======================================================================= */}
-        <aside className="w-[460px] flex flex-col bg-[#161b22] shrink-0">
+        <aside className="w-[450px] flex flex-col bg-[#0a0a0a] shrink-0">
           {/* Header Tabs: AI Studio vs RAGAS Benchmark */}
-          <div className="h-12 px-4 border-b border-[#30363d] flex items-center justify-between shrink-0 font-mono">
+          <div className="h-11 px-4 border-b border-[#222222] flex items-center justify-between shrink-0 font-mono">
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setActiveRightTab("chat")}
-                className={`px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1.5 transition ${
+                className={`px-3 py-1 rounded text-xs font-bold flex items-center gap-1.5 transition ${
                   activeRightTab === "chat"
-                    ? "bg-[#21262d] text-[#f0f6fc] border border-[#30363d]"
-                    : "text-[#8b949e] hover:text-[#f0f6fc]"
+                    ? "bg-[#18181b] text-white border border-[#27272a]"
+                    : "text-[#a1a1aa] hover:text-white"
                 }`}
               >
-                <Terminal className="w-3.5 h-3.5 text-[#58a6ff]" />
+                <Terminal className="w-3.5 h-3.5 text-[#38bdf8]" />
                 Architecture Chat
               </button>
 
@@ -683,10 +675,10 @@ export default function App() {
                   setActiveRightTab("benchmark");
                   if (!evalResult && githubUrl) handleRunEvaluation();
                 }}
-                className={`px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1.5 transition ${
+                className={`px-3 py-1 rounded text-xs font-bold flex items-center gap-1.5 transition ${
                   activeRightTab === "benchmark"
-                    ? "bg-[#21262d] text-[#f0f6fc] border border-[#30363d]"
-                    : "text-[#8b949e] hover:text-[#f0f6fc]"
+                    ? "bg-[#18181b] text-white border border-[#27272a]"
+                    : "text-[#a1a1aa] hover:text-white"
                 }`}
               >
                 <Gauge className="w-3.5 h-3.5 text-[#10b981]" />
@@ -697,7 +689,7 @@ export default function App() {
             {activeRightTab === "chat" && messages.length > 0 && (
               <button
                 onClick={() => setMessages([])}
-                className="text-[#8b949e] hover:text-rose-400 flex items-center gap-1 text-[11px] transition px-2 py-1 rounded hover:bg-[#21262d]"
+                className="text-[#71717a] hover:text-rose-400 flex items-center gap-1 text-[11px] transition px-2 py-1 rounded hover:bg-[#18181b]"
                 title="Clear conversation"
               >
                 <Trash2 className="w-3 h-3" />
@@ -711,14 +703,14 @@ export default function App() {
             <div className="flex-1 flex flex-col overflow-hidden">
               <div className="flex-1 overflow-y-auto p-4 space-y-4">
                 {messages.length === 0 && !isAsking && (
-                  <div className="h-full flex flex-col items-center justify-center text-center text-[#8b949e] px-4 font-mono">
-                    <div className="w-12 h-12 rounded-xl bg-[#21262d] border border-[#30363d] flex items-center justify-center mb-3 text-[#58a6ff]">
+                  <div className="h-full flex flex-col items-center justify-center text-center text-[#a1a1aa] px-4 font-mono">
+                    <div className="w-12 h-12 rounded-xl bg-[#111111] border border-[#222222] flex items-center justify-center mb-3 text-[#38bdf8]">
                       <Sparkles className="w-6 h-6" />
                     </div>
-                    <h4 className="text-xs font-bold text-[#f0f6fc] uppercase tracking-wider">
+                    <h4 className="text-xs font-bold text-white uppercase tracking-wider">
                       Conversational Codebase Architect
                     </h4>
-                    <p className="text-[11px] text-[#8b949e] mt-1 max-w-xs leading-relaxed">
+                    <p className="text-[11px] text-[#a1a1aa] mt-1 max-w-xs leading-relaxed">
                       Grounded with AST symbols, graph connections, and Groq LLaMA 3.3 70B.
                     </p>
 
@@ -733,9 +725,9 @@ export default function App() {
                         <button
                           key={idx}
                           onClick={() => handleSendMessage(undefined, prompt)}
-                          className="text-[11px] text-[#c9d1d9] hover:text-[#f0f6fc] bg-[#21262d] hover:bg-[#30363d] border border-[#30363d] px-3 py-2 rounded-md text-left transition font-mono truncate group"
+                          className="text-[11px] text-[#d4d4d8] hover:text-white bg-[#111111] hover:bg-[#18181b] border border-[#222222] hover:border-[#383838] px-3 py-2 rounded-md text-left transition font-mono truncate group"
                         >
-                          <span className="text-[#58a6ff] mr-1.5 font-bold">→</span> {prompt}
+                          <span className="text-[#38bdf8] mr-1.5 font-bold">→</span> {prompt}
                         </button>
                       ))}
                     </div>
@@ -747,23 +739,23 @@ export default function App() {
                   <div key={msg.id} className="space-y-2">
                     {msg.role === "user" ? (
                       <div className="flex items-start justify-end">
-                        <div className="max-w-[85%] rounded-lg bg-[#21262d] border border-[#30363d] p-3">
-                          <p className="text-xs font-mono text-[#f0f6fc] leading-relaxed">{msg.content}</p>
-                          <span className="text-[9px] font-mono text-[#8b949e] mt-1 block text-right">
+                        <div className="max-w-[85%] rounded-lg bg-[#18181b] border border-[#27272a] p-3">
+                          <p className="text-xs font-mono text-white leading-relaxed">{msg.content}</p>
+                          <span className="text-[9px] font-mono text-[#71717a] mt-1 block text-right font-medium">
                             {msg.timestamp}
                           </span>
                         </div>
                       </div>
                     ) : (
-                      <div className="rounded-lg bg-[#0d1117] border border-[#30363d] p-3.5">
-                        <div className="flex items-center justify-between border-b border-[#30363d] pb-1.5 mb-2 font-mono">
-                          <span className="text-[10px] font-bold text-[#58a6ff] uppercase tracking-wider flex items-center gap-1.5">
-                            <Sparkles className="w-3 h-3 text-[#58a6ff]" />
+                      <div className="rounded-lg bg-[#000000] border border-[#222222] p-3.5 shadow-sm">
+                        <div className="flex items-center justify-between border-b border-[#222222] pb-1.5 mb-2 font-mono">
+                          <span className="text-[10px] font-bold text-[#38bdf8] uppercase tracking-wider flex items-center gap-1.5">
+                            <Sparkles className="w-3 h-3 text-[#38bdf8]" />
                             Codebase Oracle
                           </span>
                           <button
                             onClick={() => copyToClipboard(msg.content, msg.id)}
-                            className="text-[#8b949e] hover:text-[#f0f6fc] text-[10px] flex items-center gap-1 transition"
+                            className="text-[#71717a] hover:text-white text-[10px] flex items-center gap-1 transition"
                           >
                             {copiedId === msg.id ? (
                               <Check className="w-3 h-3 text-[#10b981]" />
@@ -777,8 +769,8 @@ export default function App() {
 
                         {/* Grounded Citations */}
                         {msg.citations && msg.citations.length > 0 && (
-                          <div className="mt-3 pt-2.5 border-t border-[#30363d] font-mono">
-                            <span className="text-[10px] font-bold text-[#8b949e] uppercase tracking-wider block mb-1.5">
+                          <div className="mt-3 pt-2.5 border-t border-[#222222] font-mono">
+                            <span className="text-[10px] font-bold text-[#71717a] uppercase tracking-wider block mb-1.5">
                               Verified Code Citations:
                             </span>
                             <div className="flex flex-wrap gap-1.5">
@@ -788,11 +780,11 @@ export default function App() {
                                   href={c.github_url || "#"}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="px-2 py-1 rounded bg-[#161b22] hover:bg-[#21262d] border border-[#30363d] hover:border-[#58a6ff] text-[10px] text-[#58a6ff] flex items-center gap-1 transition"
+                                  className="px-2 py-1 rounded bg-[#111111] hover:bg-[#18181b] border border-[#222222] hover:border-[#38bdf8] text-[10px] text-[#38bdf8] flex items-center gap-1 transition"
                                 >
                                   <span>{c.file_path.split("/").pop()}</span>
-                                  <span className="text-[#8b949e]">L{c.start_line}–{c.end_line}</span>
-                                  <ExternalLink className="w-2.5 h-2.5 text-[#8b949e]" />
+                                  <span className="text-[#71717a]">L{c.start_line}–{c.end_line}</span>
+                                  <ExternalLink className="w-2.5 h-2.5 text-[#71717a]" />
                                 </a>
                               ))}
                             </div>
@@ -804,7 +796,7 @@ export default function App() {
                 ))}
 
                 {isAsking && (
-                  <div className="flex items-center gap-2 p-3 rounded-lg bg-[#0d1117] border border-[#30363d] text-[#58a6ff] font-mono text-xs">
+                  <div className="flex items-center gap-2 p-3 rounded-lg bg-[#000000] border border-[#222222] text-[#38bdf8] font-mono text-xs animate-pulse">
                     <Loader2 className="w-4 h-4 animate-spin" />
                     <span>Synthesizing response with GraphRAG...</span>
                   </div>
@@ -812,20 +804,20 @@ export default function App() {
               </div>
 
               {/* Chat Input Bar */}
-              <form onSubmit={handleSendMessage} className="p-3 border-t border-[#30363d] bg-[#161b22] flex items-center gap-2">
+              <form onSubmit={handleSendMessage} className="p-3 border-t border-[#222222] bg-[#0a0a0a] flex items-center gap-2">
                 <input
                   type="text"
                   value={inputQuery}
                   onChange={(e) => setInputQuery(e.target.value)}
                   placeholder="Ask about this codebase architecture..."
-                  className="flex-1 px-3 py-2 rounded-md bg-[#0d1117] border border-[#30363d] text-xs text-[#f0f6fc] placeholder-[#6e7681] focus:outline-none focus:border-[#3b82f6] font-mono"
+                  className="flex-1 px-3 py-2 rounded-md bg-[#000000] border border-[#27272a] text-xs text-white placeholder-[#52525b] focus:outline-none focus:border-white font-mono"
                 />
                 <button
                   type="submit"
                   disabled={isAsking || !inputQuery.trim()}
-                  className="p-2 rounded-md bg-[#10b981] hover:bg-[#059669] text-white disabled:opacity-40 transition"
+                  className="px-3 py-2 rounded-md bg-white hover:bg-[#e4e4e7] text-black font-bold text-xs disabled:opacity-40 transition flex items-center gap-1"
                 >
-                  <Send className="w-4 h-4" />
+                  <Send className="w-3.5 h-3.5" />
                 </button>
               </form>
             </div>
@@ -834,58 +826,58 @@ export default function App() {
           {/* TAB 2: RAGAS QUALITY BENCHMARK */}
           {activeRightTab === "benchmark" && (
             <div className="flex-1 overflow-y-auto p-4 space-y-4 font-mono">
-              <div className="flex items-center justify-between border-b border-[#30363d] pb-3">
+              <div className="flex items-center justify-between border-b border-[#222222] pb-3">
                 <div>
-                  <h4 className="text-xs font-bold text-[#f0f6fc] uppercase tracking-wider">
+                  <h4 className="text-xs font-bold text-white uppercase tracking-wider">
                     RAGAS Quality & Faithfulness Benchmark
                   </h4>
-                  <p className="text-[10px] text-[#8b949e] mt-0.5">
-                    Automated retrieval & synthesis evaluation metrics
+                  <p className="text-[10px] text-[#a1a1aa] mt-0.5">
+                    Dynamic repository retrieval and negative refusal evaluation
                   </p>
                 </div>
                 <button
                   onClick={handleRunEvaluation}
                   disabled={isEvaluating || !githubUrl}
-                  className="px-2.5 py-1 rounded bg-[#21262d] hover:bg-[#30363d] text-[#f0f6fc] border border-[#30363d] text-xs font-semibold disabled:opacity-40 transition"
+                  className="px-3 py-1 rounded bg-white hover:bg-[#e4e4e7] text-black text-xs font-bold disabled:opacity-40 transition"
                 >
-                  {isEvaluating ? "Evaluating..." : "Re-run"}
+                  {isEvaluating ? "Evaluating..." : "Run Benchmark"}
                 </button>
               </div>
 
               {isEvaluating ? (
-                <div className="py-16 flex flex-col items-center justify-center gap-3 text-[#8b949e]">
-                  <Loader2 className="w-6 h-6 text-[#10b981] animate-spin" />
-                  <p className="text-xs">Running synthetic RAGAS evaluations...</p>
+                <div className="py-16 flex flex-col items-center justify-center gap-3 text-[#a1a1aa]">
+                  <Loader2 className="w-6 h-6 text-white animate-spin" />
+                  <p className="text-xs">Running dynamic RAGAS test suite...</p>
                 </div>
               ) : evalResult ? (
                 <div className="space-y-4">
                   <div className="grid grid-cols-3 gap-2">
-                    <div className="p-3 rounded-md bg-[#0d1117] border border-[#30363d]">
-                      <span className="text-[10px] text-[#8b949e] uppercase">Faithfulness</span>
+                    <div className="p-3 rounded-md bg-[#000000] border border-[#222222]">
+                      <span className="text-[10px] text-[#71717a] uppercase font-bold">Faithfulness</span>
                       <p className="text-lg font-bold text-[#10b981] mt-1">
-                        {Math.round(evalResult.faithfulness_score * 100)}%
+                        {Math.round(evalResult.mean_faithfulness * 100)}%
                       </p>
                     </div>
-                    <div className="p-3 rounded-md bg-[#0d1117] border border-[#30363d]">
-                      <span className="text-[10px] text-[#8b949e] uppercase">Precision</span>
-                      <p className="text-lg font-bold text-[#58a6ff] mt-1">
-                        {Math.round(evalResult.context_precision_score * 100)}%
+                    <div className="p-3 rounded-md bg-[#000000] border border-[#222222]">
+                      <span className="text-[10px] text-[#71717a] uppercase font-bold">Precision</span>
+                      <p className="text-lg font-bold text-[#38bdf8] mt-1">
+                        {Math.round(evalResult.mean_context_precision * 100)}%
                       </p>
                     </div>
-                    <div className="p-3 rounded-md bg-[#0d1117] border border-[#30363d]">
-                      <span className="text-[10px] text-[#8b949e] uppercase">Refusal Acc</span>
-                      <p className="text-lg font-bold text-[#f0f6fc] mt-1">
-                        {Math.round(evalResult.negative_refusal_accuracy * 100)}%
+                    <div className="p-3 rounded-md bg-[#000000] border border-[#222222]">
+                      <span className="text-[10px] text-[#71717a] uppercase font-bold">Refusal Acc</span>
+                      <p className="text-lg font-bold text-white mt-1">
+                        {Math.round(evalResult.refusal_accuracy * 100)}%
                       </p>
                     </div>
                   </div>
 
                   <div>
-                    <h5 className="text-xs font-bold text-[#f0f6fc] uppercase mb-2">Test Case Results</h5>
+                    <h5 className="text-xs font-bold text-white uppercase mb-2">Dynamic Benchmark Test Cases</h5>
                     <div className="space-y-2">
-                      {evalResult.detailed_cases?.map((tc: any, i: number) => (
-                        <div key={i} className="p-2.5 rounded bg-[#0d1117] border border-[#30363d] text-[11px] flex items-center justify-between">
-                          <span className="text-[#c9d1d9] truncate max-w-[280px]">{tc.question}</span>
+                      {evalResult.details?.map((tc: any, i: number) => (
+                        <div key={i} className="p-2.5 rounded bg-[#000000] border border-[#222222] text-[11px] flex items-center justify-between">
+                          <span className="text-[#d4d4d8] truncate max-w-[280px]">{tc.question}</span>
                           <span
                             className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
                               tc.passed
@@ -901,8 +893,8 @@ export default function App() {
                   </div>
                 </div>
               ) : (
-                <div className="py-12 text-center text-[#8b949e] text-xs">
-                  Index a repository and click &quot;Run Evaluation&quot; to inspect RAGAS precision scores.
+                <div className="py-12 text-center text-[#71717a] text-xs">
+                  Index any repository above and click &quot;Run Benchmark&quot; to test grounded retrieval & anti-hallucination accuracy.
                 </div>
               )}
             </div>
