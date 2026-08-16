@@ -6,22 +6,22 @@ from tempfile import TemporaryDirectory
 
 from app.graph.registry import global_registry
 from app.graph.service import build_graph_batch
-from app.ingestion.parser import parse_python_file
-from app.ingestion.service import discover_python_files
+from app.ingestion.parser import parse_file
+from app.ingestion.service import discover_code_files
 from app.models import CodeChunk, GraphBatch, IngestResult
 from app.vectors.service import chunk_text
 
 
 def process_repository(repo_path: Path, github_url: str) -> tuple[IngestResult, GraphBatch, list[CodeChunk]]:
-    python_files = discover_python_files(repo_path)
+    code_files = discover_code_files(repo_path)
 
     all_nodes = []
     all_edges = []
     all_chunks = []
 
-    for file_path in python_files:
+    for file_path in code_files:
         rel_path = file_path.relative_to(repo_path).as_posix()
-        parsed = parse_python_file(file_path)
+        parsed = parse_file(file_path)
         batch = build_graph_batch(Path(rel_path), parsed)
 
         all_nodes.extend(batch.nodes)
@@ -34,7 +34,7 @@ def process_repository(repo_path: Path, github_url: str) -> tuple[IngestResult, 
     aggregated_batch = GraphBatch(nodes=all_nodes, edges=all_edges)
     result = IngestResult(
         github_url=github_url,
-        file_count=len(python_files),
+        file_count=len(code_files),
         node_count=len(all_nodes),
         edge_count=len(all_edges),
         chunk_count=len(all_chunks),

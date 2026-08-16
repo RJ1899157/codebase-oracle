@@ -124,7 +124,7 @@ function formatInlineMarkdown(text: string) {
 }
 
 export default function App() {
-  const [githubUrl, setGithubUrl] = useState("https://github.com/pallets/flask");
+  const [githubUrl, setGithubUrl] = useState("");
   const [isIngesting, setIsIngesting] = useState(false);
   const [ingestStats, setIngestStats] = useState<any>(null);
 
@@ -617,9 +617,10 @@ export default function App() {
                 {/* Preset Architecture Questions */}
                 <div className="mt-5 flex flex-col gap-2 w-full max-w-xs text-left">
                   {[
-                    "Where is the Flask class defined?",
-                    "How are blueprints registered in the application?",
-                    "What are the main entrypoints and core dependencies?",
+                    "What is the main architecture and entrypoint of this repository?",
+                    "How is data flow and routing structured across modules?",
+                    "What are the core classes, interfaces, and key abstractions?",
+                    "Are there any external dependencies or API clients configured?",
                   ].map((prompt, idx) => (
                     <button
                       key={idx}

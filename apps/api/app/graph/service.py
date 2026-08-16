@@ -3,11 +3,11 @@ from __future__ import annotations
 from pathlib import Path
 
 from app.core.config import get_settings
-from app.ingestion.parser import ParsedPythonFile
+from app.ingestion.parser import ParsedFile
 from app.models import GraphBatch, GraphEdge, GraphNode
 
 
-def build_graph_batch(file_path: Path, parsed: ParsedPythonFile) -> GraphBatch:
+def build_graph_batch(file_path: Path, parsed: ParsedFile) -> GraphBatch:
     nodes: list[GraphNode] = []
     edges: list[GraphEdge] = []
 
