@@ -78,7 +78,7 @@ function MarkdownRenderer({ content }: { content: string }) {
         }
         if (trimmed.startsWith("## ")) {
           return (
-            <h3 key={i} className="text-sm font-semibold text-[#f0f6fc] uppercase tracking-wider pt-2.5 font-mono border-b border-[#30363d] pb-1">
+            <h3 key={i} className="text-sm font-semibold text-[#f0f6fc] uppercase tracking-wider pt-2.5 font-mono border-b border-[#222222] pb-1">
               {trimmed.slice(3)}
             </h3>
           );
@@ -100,7 +100,7 @@ function MarkdownRenderer({ content }: { content: string }) {
         }
         if (trimmed.startsWith("> ")) {
           return (
-            <blockquote key={i} className="p-2.5 rounded bg-[#161b22] border-l-2 border-[#58a6ff] text-[#8b949e] italic text-[11px]">
+            <blockquote key={i} className="p-2.5 rounded bg-[#111111] border-l-2 border-[#58a6ff] text-[#8b949e] italic text-[11px]">
               {formatInlineMarkdown(trimmed.slice(2))}
             </blockquote>
           );
@@ -122,7 +122,7 @@ function formatInlineMarkdown(text: string) {
   return parts.map((part, idx) => {
     if (part.startsWith("`") && part.endsWith("`")) {
       return (
-        <code key={idx} className="px-1.5 py-0.5 rounded bg-[#21262d] border border-[#30363d] text-[#58a6ff] font-mono text-[11px] font-medium">
+        <code key={idx} className="px-1.5 py-0.5 rounded bg-[#161616] border border-[#27272a] text-[#58a6ff] font-mono text-[11px] font-medium">
           {part.slice(1, -1)}
         </code>
       );
@@ -353,21 +353,21 @@ export default function App() {
   };
 
   return (
-    <div className="flex flex-col w-screen h-screen overflow-hidden bg-[#0d1117] text-[#c9d1d9] font-sans">
+    <div className="flex flex-col w-screen h-screen overflow-hidden bg-[#000000] text-[#c9d1d9] font-sans">
       {/* ========================================================================= */}
-      {/* ZONE 1: MIDNIGHT COMMAND HEADER (Solid 56px Bar) */}
+      {/* ZONE 1: JET BLACK HEADER (Solid 56px Bar) */}
       {/* ========================================================================= */}
-      <header className="h-14 px-5 border-b border-[#30363d] bg-[#161b22] flex items-center justify-between shrink-0 z-30">
+      <header className="h-14 px-5 border-b border-[#222222] bg-[#0a0a0a] flex items-center justify-between shrink-0 z-30">
         {/* Left: Brand Icon & Title */}
         <div className="flex items-center gap-3">
-          <div className="w-7 h-7 rounded-md bg-[#21262d] border border-[#30363d] text-[#58a6ff] flex items-center justify-center font-black text-xs">
+          <div className="w-7 h-7 rounded-md bg-[#161616] border border-[#27272a] text-[#58a6ff] flex items-center justify-center font-black text-xs">
             ▲
           </div>
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold text-[#f0f6fc] tracking-tight font-mono">
               Codebase Oracle
             </span>
-            <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#21262d] text-[#8b949e] border border-[#30363d] font-mono">
+            <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#161616] text-[#8b949e] border border-[#27272a] font-mono">
               GraphRAG 2.0
             </span>
           </div>
@@ -382,7 +382,7 @@ export default function App() {
               value={githubUrl}
               onChange={(e) => setGithubUrl(e.target.value)}
               placeholder="https://github.com/owner/repository"
-              className="w-full pl-9 pr-3 py-1.5 rounded-md bg-[#0d1117] border border-[#30363d] text-xs text-[#c9d1d9] placeholder-[#8b949e] focus:outline-none focus:border-[#58a6ff] font-mono transition"
+              className="w-full pl-9 pr-3 py-1.5 rounded-md bg-[#000000] border border-[#27272a] text-xs text-[#c9d1d9] placeholder-[#52525b] focus:outline-none focus:border-[#58a6ff] font-mono transition"
             />
           </div>
           <button
@@ -412,7 +412,7 @@ export default function App() {
                   setGithubUrl(repo.url);
                   handleIngest(repo.url);
                 }}
-                className="px-2 py-1 rounded bg-[#21262d] hover:bg-[#30363d] hover:text-[#f0f6fc] text-[#c9d1d9] border border-[#30363d] transition"
+                className="px-2 py-1 rounded bg-[#161616] hover:bg-[#222222] hover:text-[#f0f6fc] text-[#c9d1d9] border border-[#27272a] transition"
               >
                 {repo.name}
               </button>
@@ -422,17 +422,17 @@ export default function App() {
 
         {/* Right: Telemetry Status & Actions */}
         <div className="flex items-center gap-3 font-mono text-xs">
-          <div className="flex items-center gap-2 px-2.5 py-1 rounded-md bg-[#21262d] border border-[#30363d] text-[11px] text-[#8b949e]">
+          <div className="flex items-center gap-2 px-2.5 py-1 rounded-md bg-[#111111] border border-[#222222] text-[11px] text-[#8b949e]">
             <span className="w-1.5 h-1.5 rounded-full bg-[#3fb950]" />
             <span className="truncate max-w-[140px] text-[#c9d1d9] font-medium">{activeModel}</span>
           </div>
 
           {ingestStats && (
             <div className="hidden xl:flex items-center gap-1.5 text-[11px] text-[#8b949e]">
-              <span className="px-2 py-1 rounded bg-[#21262d] border border-[#30363d]">
+              <span className="px-2 py-1 rounded bg-[#111111] border border-[#222222]">
                 <strong className="text-[#f0f6fc]">{ingestStats.node_count}</strong> nodes
               </span>
-              <span className="px-2 py-1 rounded bg-[#21262d] border border-[#30363d]">
+              <span className="px-2 py-1 rounded bg-[#111111] border border-[#222222]">
                 <strong className="text-[#f0f6fc]">{ingestStats.edge_count}</strong> rels
               </span>
             </div>
@@ -440,7 +440,7 @@ export default function App() {
 
           <button
             onClick={() => setShowHelpGuide(!showHelpGuide)}
-            className="p-1.5 rounded-md hover:bg-[#21262d] text-[#8b949e] hover:text-[#c9d1d9] border border-transparent hover:border-[#30363d] transition"
+            className="p-1.5 rounded-md hover:bg-[#161616] text-[#8b949e] hover:text-[#c9d1d9] border border-transparent hover:border-[#27272a] transition"
             title="Toggle Guide"
           >
             <HelpCircle className="w-4 h-4" />
@@ -452,21 +452,21 @@ export default function App() {
       {/* GUIDED ONBOARDING BANNER (TOGGLEABLE) */}
       {/* ========================================================================= */}
       {showHelpGuide && (
-        <div className="px-5 py-2 border-b border-[#30363d] bg-[#161b22] flex items-center justify-between text-xs text-[#8b949e] font-mono">
+        <div className="px-5 py-2 border-b border-[#222222] bg-[#0a0a0a] flex items-center justify-between text-xs text-[#8b949e] font-mono">
           <div className="flex items-center gap-5">
             <span className="font-semibold text-[#f0f6fc] uppercase tracking-wider">Guide:</span>
             <div className="flex items-center gap-2">
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#21262d] border border-[#30363d] text-[#58a6ff]">1</span>
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#161616] border border-[#27272a] text-[#58a6ff]">1</span>
               <span>Paste repo URL or click sample</span>
             </div>
-            <ArrowRight className="w-3 h-3 text-[#484f58]" />
+            <ArrowRight className="w-3 h-3 text-[#52525b]" />
             <div className="flex items-center gap-2">
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#21262d] border border-[#30363d] text-[#8b949e]">2</span>
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#161616] border border-[#27272a] text-[#8b949e]">2</span>
               <span>Filter symbols & explore technical blueprint</span>
             </div>
-            <ArrowRight className="w-3 h-3 text-[#484f58]" />
+            <ArrowRight className="w-3 h-3 text-[#52525b]" />
             <div className="flex items-center gap-2">
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#21262d] border border-[#30363d] text-[#8b949e]">3</span>
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#161616] border border-[#27272a] text-[#8b949e]">3</span>
               <span>Ask architectural queries with verified citations</span>
             </div>
           </div>
@@ -486,9 +486,9 @@ export default function App() {
         {/* ======================================================================= */}
         {/* ZONE 2: TECHNICAL BLUEPRINT GRAPH EXPLORER (Left 65%) */}
         {/* ======================================================================= */}
-        <section className="flex-1 flex flex-col relative border-r border-[#30363d] bg-[#0d1117]">
+        <section className="flex-1 flex flex-col relative border-r border-[#222222] bg-[#000000]">
           {/* Graph Toolbar: Search, Kind Filter Tabs with Counts, Layout Switcher */}
-          <div className="h-11 px-4 border-b border-[#30363d] bg-[#161b22] flex items-center justify-between shrink-0 z-10">
+          <div className="h-11 px-4 border-b border-[#222222] bg-[#0a0a0a] flex items-center justify-between shrink-0 z-10">
             {/* Search Filter */}
             <div className="flex items-center gap-2">
               <div className="relative">
@@ -501,11 +501,11 @@ export default function App() {
                     filterNodes(selectedKind, e.target.value, allNodes, allEdges);
                   }}
                   placeholder="Filter symbols..."
-                  className="pl-8 pr-2.5 py-1 rounded bg-[#0d1117] border border-[#30363d] text-xs text-[#c9d1d9] placeholder-[#8b949e] focus:outline-none focus:border-[#58a6ff] w-44 font-mono"
+                  className="pl-8 pr-2.5 py-1 rounded bg-[#000000] border border-[#27272a] text-xs text-[#c9d1d9] placeholder-[#52525b] focus:outline-none focus:border-[#58a6ff] w-44 font-mono"
                 />
               </div>
 
-              <div className="h-4 w-[1px] bg-[#30363d]" />
+              <div className="h-4 w-[1px] bg-[#222222]" />
 
               {/* Symbol Kind Filter Tabs with Counts */}
               <div className="flex items-center gap-1 font-mono text-[11px]">
@@ -523,15 +523,15 @@ export default function App() {
                     }}
                     className={`px-2.5 py-1 rounded font-medium transition flex items-center gap-1.5 ${
                       selectedKind === tab.id
-                        ? "bg-[#21262d] text-[#58a6ff] border border-[#30363d]"
-                        : "text-[#8b949e] hover:text-[#c9d1d9] hover:bg-[#21262d]"
+                        ? "bg-[#161616] text-[#58a6ff] border border-[#27272a]"
+                        : "text-[#8b949e] hover:text-[#c9d1d9] hover:bg-[#161616]"
                     }`}
                   >
                     <span>{tab.label}</span>
                     {tab.count > 0 && (
                       <span
                         className={`text-[9px] px-1 py-0.2 rounded ${
-                          selectedKind === tab.id ? "bg-[#30363d] text-[#58a6ff]" : "bg-[#21262d] text-[#8b949e]"
+                          selectedKind === tab.id ? "bg-[#222222] text-[#58a6ff]" : "bg-[#161616] text-[#8b949e]"
                         }`}
                       >
                         {tab.count}
@@ -549,7 +549,7 @@ export default function App() {
                 onClick={() => handleLayoutToggle("layered")}
                 className={`px-2.5 py-1 rounded transition ${
                   layoutMode === "layered"
-                    ? "bg-[#21262d] text-[#58a6ff] border border-[#30363d] font-semibold"
+                    ? "bg-[#161616] text-[#58a6ff] border border-[#27272a] font-semibold"
                     : "text-[#8b949e] hover:text-[#c9d1d9]"
                 }`}
               >
@@ -559,7 +559,7 @@ export default function App() {
                 onClick={() => handleLayoutToggle("radial")}
                 className={`px-2.5 py-1 rounded transition ${
                   layoutMode === "radial"
-                    ? "bg-[#21262d] text-[#58a6ff] border border-[#30363d] font-semibold"
+                    ? "bg-[#161616] text-[#58a6ff] border border-[#27272a] font-semibold"
                     : "text-[#8b949e] hover:text-[#c9d1d9]"
                 }`}
               >
@@ -572,7 +572,7 @@ export default function App() {
           <div className="flex-1 relative">
             {nodes.length === 0 ? (
               <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
-                <div className="w-16 h-16 rounded-xl bg-[#161b22] border border-[#30363d] flex items-center justify-center mb-4 text-[#8b949e]">
+                <div className="w-16 h-16 rounded-xl bg-[#0a0a0a] border border-[#222222] flex items-center justify-center mb-4 text-[#8b949e]">
                   <Layers className="w-8 h-8" />
                 </div>
                 <h3 className="text-sm font-semibold text-[#f0f6fc] uppercase tracking-wider font-mono">
@@ -596,14 +596,14 @@ export default function App() {
                   minZoom={0.05}
                   maxZoom={2.5}
                 >
-                  <Background color="#30363d" gap={24} size={1} />
+                  <Background color="#1f1f1f" gap={24} size={1} />
                   <Controls className="!left-4 !bottom-4" />
                   <MiniMap
-                    bgColor="#161b22"
-                    maskColor="rgba(13, 17, 23, 0.85)"
+                    bgColor="#0a0a0a"
+                    maskColor="rgba(0, 0, 0, 0.85)"
                     style={{
-                      backgroundColor: "#161b22",
-                      border: "1px solid #30363d",
+                      backgroundColor: "#0a0a0a",
+                      border: "1px solid #222222",
                       borderRadius: "8px",
                       width: 180,
                       height: 110,
@@ -622,11 +622,11 @@ export default function App() {
 
             {/* Bottom Docked Selected Symbol Inspector */}
             {selectedNode && (
-              <div className="absolute bottom-4 right-4 z-20 w-96 rounded-lg border border-[#30363d] bg-[#161b22] p-4 shadow-2xl font-mono">
-                <div className="flex items-start justify-between gap-2 border-b border-[#21262d] pb-2.5">
+              <div className="absolute bottom-4 right-4 z-20 w-96 rounded-lg border border-[#222222] bg-[#0a0a0a] p-4 shadow-2xl font-mono">
+                <div className="flex items-start justify-between gap-2 border-b border-[#1f1f1f] pb-2.5">
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-semibold uppercase bg-[#21262d] text-[#58a6ff] border border-[#30363d]">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-semibold uppercase bg-[#161616] text-[#58a6ff] border border-[#27272a]">
                         {selectedNode.kind || "SYMBOL"}
                       </span>
                       <span className="text-xs font-semibold text-[#f0f6fc] truncate max-w-[190px]">
@@ -639,7 +639,7 @@ export default function App() {
                   </div>
                   <button
                     onClick={() => setSelectedNode(null)}
-                    className="text-[#8b949e] hover:text-[#c9d1d9] p-1 rounded hover:bg-[#21262d]"
+                    className="text-[#8b949e] hover:text-[#c9d1d9] p-1 rounded hover:bg-[#161616]"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -664,7 +664,7 @@ export default function App() {
                           `Explain the implementation and role of \`${selectedNode.label}\` in \`${selectedNode.file_path}\`.`
                         )
                       }
-                      className="px-2.5 py-1 rounded bg-[#21262d] hover:bg-[#30363d] border border-[#30363d] text-[#58a6ff] text-[10px] font-semibold transition"
+                      className="px-2.5 py-1 rounded bg-[#161616] hover:bg-[#222222] border border-[#27272a] text-[#58a6ff] text-[10px] font-semibold transition"
                     >
                       Explain with AI
                     </button>
@@ -674,7 +674,7 @@ export default function App() {
                         href={`${githubUrl}/blob/main/${selectedNode.file_path}#L${selectedNode.start_line}-L${selectedNode.end_line}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="px-2.5 py-1 rounded bg-[#21262d] hover:bg-[#30363d] border border-[#30363d] text-[#c9d1d9] text-[10px] font-medium flex items-center gap-1 transition"
+                        className="px-2.5 py-1 rounded bg-[#161616] hover:bg-[#222222] border border-[#27272a] text-[#c9d1d9] text-[10px] font-medium flex items-center gap-1 transition"
                       >
                         GitHub <ExternalLink className="w-3 h-3 text-[#8b949e]" />
                       </a>
@@ -689,15 +689,15 @@ export default function App() {
         {/* ======================================================================= */}
         {/* ZONE 3: ARCHITECTURE AI STUDIO (Right 35% Fixed Panel) */}
         {/* ======================================================================= */}
-        <aside className="w-[460px] flex flex-col bg-[#161b22] shrink-0">
+        <aside className="w-[460px] flex flex-col bg-[#0a0a0a] shrink-0">
           {/* Header Tabs: AI Studio vs RAGAS Benchmark */}
-          <div className="h-11 px-4 border-b border-[#30363d] flex items-center justify-between shrink-0 font-mono">
+          <div className="h-11 px-4 border-b border-[#222222] flex items-center justify-between shrink-0 font-mono">
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setActiveRightTab("chat")}
                 className={`px-3 py-1 rounded text-xs font-semibold flex items-center gap-1.5 transition ${
                   activeRightTab === "chat"
-                    ? "bg-[#21262d] text-[#58a6ff] border border-[#30363d]"
+                    ? "bg-[#161616] text-[#58a6ff] border border-[#27272a]"
                     : "text-[#8b949e] hover:text-[#c9d1d9]"
                 }`}
               >
@@ -712,7 +712,7 @@ export default function App() {
                 }}
                 className={`px-3 py-1 rounded text-xs font-semibold flex items-center gap-1.5 transition ${
                   activeRightTab === "benchmark"
-                    ? "bg-[#21262d] text-[#3fb950] border border-[#30363d]"
+                    ? "bg-[#161616] text-[#3fb950] border border-[#27272a]"
                     : "text-[#8b949e] hover:text-[#c9d1d9]"
                 }`}
               >
@@ -724,7 +724,7 @@ export default function App() {
             {activeRightTab === "chat" && messages.length > 0 && (
               <button
                 onClick={() => setMessages([])}
-                className="text-[#8b949e] hover:text-rose-400 flex items-center gap-1 text-[11px] transition px-2 py-1 rounded hover:bg-[#21262d]"
+                className="text-[#8b949e] hover:text-rose-400 flex items-center gap-1 text-[11px] transition px-2 py-1 rounded hover:bg-[#161616]"
                 title="Clear conversation"
               >
                 <Trash2 className="w-3 h-3" />
@@ -739,7 +739,7 @@ export default function App() {
               <div className="flex-1 overflow-y-auto p-4 space-y-4">
                 {messages.length === 0 && !isAsking && (
                   <div className="h-full flex flex-col items-center justify-center text-center text-[#8b949e] px-4 font-mono">
-                    <div className="w-12 h-12 rounded-xl bg-[#21262d] border border-[#30363d] flex items-center justify-center mb-3 text-[#58a6ff]">
+                    <div className="w-12 h-12 rounded-xl bg-[#111111] border border-[#222222] flex items-center justify-center mb-3 text-[#58a6ff]">
                       <Sparkles className="w-6 h-6" />
                     </div>
                     <h4 className="text-xs font-semibold text-[#f0f6fc] uppercase tracking-wider">
@@ -760,7 +760,7 @@ export default function App() {
                         <button
                           key={idx}
                           onClick={() => handleSendMessage(undefined, prompt)}
-                          className="text-[11px] text-[#c9d1d9] hover:text-[#f0f6fc] bg-[#21262d] hover:bg-[#30363d] border border-[#30363d] hover:border-[#484f58] px-3 py-2 rounded-md text-left transition font-mono truncate group"
+                          className="text-[11px] text-[#c9d1d9] hover:text-[#f0f6fc] bg-[#111111] hover:bg-[#161616] border border-[#222222] hover:border-[#333333] px-3 py-2 rounded-md text-left transition font-mono truncate group"
                         >
                           <span className="text-[#58a6ff] mr-1.5 font-bold">→</span> {prompt}
                         </button>
@@ -774,7 +774,7 @@ export default function App() {
                   <div key={msg.id} className="space-y-2">
                     {msg.role === "user" ? (
                       <div className="flex items-start justify-end">
-                        <div className="max-w-[85%] rounded-lg bg-[#21262d] border border-[#30363d] p-3">
+                        <div className="max-w-[85%] rounded-lg bg-[#161616] border border-[#27272a] p-3">
                           <p className="text-xs font-mono text-[#f0f6fc] leading-relaxed">{msg.content}</p>
                           <span className="text-[9px] font-mono text-[#8b949e] mt-1 block text-right">
                             {msg.timestamp}
@@ -782,8 +782,8 @@ export default function App() {
                         </div>
                       </div>
                     ) : (
-                      <div className="rounded-lg bg-[#0d1117] border border-[#30363d] p-3.5 shadow-sm">
-                        <div className="flex items-center justify-between border-b border-[#21262d] pb-1.5 mb-2 font-mono">
+                      <div className="rounded-lg bg-[#000000] border border-[#222222] p-3.5 shadow-sm">
+                        <div className="flex items-center justify-between border-b border-[#1f1f1f] pb-1.5 mb-2 font-mono">
                           <span className="text-[10px] font-semibold text-[#58a6ff] uppercase tracking-wider flex items-center gap-1.5">
                             <Sparkles className="w-3 h-3 text-[#58a6ff]" />
                             Codebase Oracle
@@ -804,7 +804,7 @@ export default function App() {
 
                         {/* Grounded Citations */}
                         {msg.citations && msg.citations.length > 0 && (
-                          <div className="mt-3 pt-2.5 border-t border-[#21262d] font-mono">
+                          <div className="mt-3 pt-2.5 border-t border-[#1f1f1f] font-mono">
                             <span className="text-[10px] font-semibold text-[#8b949e] uppercase tracking-wider block mb-1.5">
                               Verified Code Citations:
                             </span>
@@ -815,7 +815,7 @@ export default function App() {
                                   href={c.github_url || "#"}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="px-2 py-1 rounded bg-[#21262d] hover:bg-[#30363d] border border-[#30363d] hover:border-[#58a6ff] text-[10px] text-[#58a6ff] flex items-center gap-1 transition"
+                                  className="px-2 py-1 rounded bg-[#111111] hover:bg-[#161616] border border-[#222222] hover:border-[#58a6ff] text-[10px] text-[#58a6ff] flex items-center gap-1 transition"
                                 >
                                   <span>{c.file_path.split("/").pop()}</span>
                                   <span className="text-[#8b949e]">L{c.start_line}–{c.end_line}</span>
@@ -831,7 +831,7 @@ export default function App() {
                 ))}
 
                 {isAsking && (
-                  <div className="flex items-center gap-2 p-3 rounded-lg bg-[#0d1117] border border-[#30363d] text-[#58a6ff] font-mono text-xs">
+                  <div className="flex items-center gap-2 p-3 rounded-lg bg-[#000000] border border-[#222222] text-[#58a6ff] font-mono text-xs">
                     <Loader2 className="w-4 h-4 animate-spin" />
                     <span>Synthesizing response with GraphRAG...</span>
                   </div>
@@ -839,18 +839,18 @@ export default function App() {
               </div>
 
               {/* Chat Input Bar */}
-              <form onSubmit={handleSendMessage} className="p-3 border-t border-[#30363d] bg-[#161b22] flex items-center gap-2">
+              <form onSubmit={handleSendMessage} className="p-3 border-t border-[#222222] bg-[#0a0a0a] flex items-center gap-2">
                 <input
                   type="text"
                   value={inputQuery}
                   onChange={(e) => setInputQuery(e.target.value)}
                   placeholder="Ask about this codebase architecture..."
-                  className="flex-1 px-3 py-2 rounded-md bg-[#0d1117] border border-[#30363d] text-xs text-[#c9d1d9] placeholder-[#8b949e] focus:outline-none focus:border-[#58a6ff] font-mono"
+                  className="flex-1 px-3 py-2 rounded-md bg-[#000000] border border-[#27272a] text-xs text-[#c9d1d9] placeholder-[#52525b] focus:outline-none focus:border-[#58a6ff] font-mono"
                 />
                 <button
                   type="submit"
                   disabled={isAsking || !inputQuery.trim()}
-                  className="px-3.5 py-2 rounded-md bg-[#21262d] hover:bg-[#30363d] border border-[#30363d] text-[#58a6ff] font-semibold text-xs disabled:opacity-40 transition flex items-center gap-1"
+                  className="px-3.5 py-2 rounded-md bg-[#161616] hover:bg-[#222222] border border-[#27272a] text-[#58a6ff] font-semibold text-xs disabled:opacity-40 transition flex items-center gap-1"
                 >
                   <Send className="w-3.5 h-3.5" />
                 </button>
@@ -861,7 +861,7 @@ export default function App() {
           {/* TAB 2: RAGAS QUALITY BENCHMARK */}
           {activeRightTab === "benchmark" && (
             <div className="flex-1 overflow-y-auto p-4 space-y-4 font-mono">
-              <div className="flex items-center justify-between border-b border-[#30363d] pb-3">
+              <div className="flex items-center justify-between border-b border-[#222222] pb-3">
                 <div>
                   <h4 className="text-xs font-semibold text-[#f0f6fc] uppercase tracking-wider">
                     RAGAS Quality & Faithfulness Benchmark
@@ -873,7 +873,7 @@ export default function App() {
                 <button
                   onClick={handleRunEvaluation}
                   disabled={isEvaluating || !githubUrl}
-                  className="px-3 py-1.5 rounded-md bg-[#21262d] hover:bg-[#30363d] border border-[#30363d] text-[#3fb950] text-xs font-semibold disabled:opacity-40 transition flex items-center gap-1.5"
+                  className="px-3 py-1.5 rounded-md bg-[#161616] hover:bg-[#222222] border border-[#27272a] text-[#3fb950] text-xs font-semibold disabled:opacity-40 transition flex items-center gap-1.5"
                 >
                   {isEvaluating ? (
                     <>
@@ -898,19 +898,19 @@ export default function App() {
                 <div className="space-y-4">
                   {/* Metric Cards */}
                   <div className="grid grid-cols-3 gap-2">
-                    <div className="p-3 rounded-lg bg-[#0d1117] border border-[#30363d]">
+                    <div className="p-3 rounded-lg bg-[#000000] border border-[#222222]">
                       <span className="text-[10px] text-[#8b949e] uppercase font-semibold tracking-wider">Faithfulness</span>
                       <p className="text-xl font-bold text-[#3fb950] mt-1">
                         {Math.round(evalResult.mean_faithfulness * 100)}%
                       </p>
                     </div>
-                    <div className="p-3 rounded-lg bg-[#0d1117] border border-[#30363d]">
+                    <div className="p-3 rounded-lg bg-[#000000] border border-[#222222]">
                       <span className="text-[10px] text-[#8b949e] uppercase font-semibold tracking-wider">Precision</span>
                       <p className="text-xl font-bold text-[#58a6ff] mt-1">
                         {Math.round(evalResult.mean_context_precision * 100)}%
                       </p>
                     </div>
-                    <div className="p-3 rounded-lg bg-[#0d1117] border border-[#30363d]">
+                    <div className="p-3 rounded-lg bg-[#000000] border border-[#222222]">
                       <span className="text-[10px] text-[#8b949e] uppercase font-semibold tracking-wider">Refusal Acc</span>
                       <p className="text-xl font-bold text-[#f0f6fc] mt-1">
                         {Math.round(evalResult.refusal_accuracy * 100)}%
@@ -931,7 +931,7 @@ export default function App() {
                       {evalResult.details?.map((tc: any, i: number) => (
                         <div
                           key={i}
-                          className="p-3 rounded-lg bg-[#0d1117] border border-[#30363d] hover:border-[#484f58] transition space-y-2"
+                          className="p-3 rounded-lg bg-[#000000] border border-[#222222] hover:border-[#333333] transition space-y-2"
                         >
                           <div className="flex items-start justify-between gap-2">
                             <p className="text-xs text-[#f0f6fc] font-medium leading-snug">{tc.question}</p>
@@ -947,7 +947,7 @@ export default function App() {
                             </span>
                           </div>
 
-                          <div className="flex items-center gap-4 text-[10px] text-[#8b949e] pt-1 border-t border-[#21262d]">
+                          <div className="flex items-center gap-4 text-[10px] text-[#8b949e] pt-1 border-t border-[#18181b]">
                             <span>Faithfulness: <strong className="text-[#f0f6fc]">{Math.round(tc.faithfulness * 100)}%</strong></span>
                             <span>Precision: <strong className="text-[#f0f6fc]">{Math.round(tc.precision * 100)}%</strong></span>
                             <span>Refusal: <strong className="text-[#f0f6fc]">{tc.refusal_accurate ? "Accurate" : "Mismatch"}</strong></span>

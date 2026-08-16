@@ -5,12 +5,12 @@
 @tailwind utilities;
 
 :root {
-  --background: #0d1117;
+  --background: #000000;
   --foreground: #c9d1d9;
 }
 
 body {
-  background-color: #0d1117;
+  background-color: #000000;
   color: #c9d1d9;
   font-family: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   margin: 0;
@@ -30,28 +30,28 @@ code, pre, .font-mono {
   height: 5px;
 }
 ::-webkit-scrollbar-track {
-  background: #0d1117;
+  background: #000000;
 }
 ::-webkit-scrollbar-thumb {
-  background: #30363d;
+  background: #27272a;
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #484f58;
+  background: #3f3f46;
 }
 
-/* React Flow Midnight Controls */
+/* React Flow Dominant Jet Black Controls */
 .react-flow__controls {
-  background: #161b22 !important;
-  border: 1px solid #30363d !important;
+  background: #0a0a0a !important;
+  border: 1px solid #222222 !important;
   border-radius: 6px !important;
   overflow: hidden !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.8) !important;
 }
 
 .react-flow__controls-button {
-  background: #161b22 !important;
-  border-bottom: 1px solid #21262d !important;
+  background: #0a0a0a !important;
+  border-bottom: 1px solid #1c1c1c !important;
   fill: #8b949e !important;
   color: #8b949e !important;
   width: 28px !important;
@@ -60,7 +60,7 @@ code, pre, .font-mono {
 }
 
 .react-flow__controls-button:hover {
-  background: #21262d !important;
+  background: #1c1c1c !important;
   fill: #58a6ff !important;
   color: #58a6ff !important;
 }
@@ -71,28 +71,28 @@ code, pre, .font-mono {
   max-height: 12px !important;
 }
 
-/* FIX: Absolute Dark Minimap */
+/* Absolute Dark Minimap on Jet Black */
 .react-flow__minimap {
-  background: #161b22 !important;
-  background-color: #161b22 !important;
-  border: 1px solid #30363d !important;
+  background: #0a0a0a !important;
+  background-color: #0a0a0a !important;
+  border: 1px solid #222222 !important;
   border-radius: 8px !important;
   overflow: hidden !important;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6) !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.8) !important;
   width: 180px !important;
   height: 110px !important;
 }
 
 .react-flow__minimap svg {
-  background: #161b22 !important;
-  background-color: #161b22 !important;
+  background: #0a0a0a !important;
+  background-color: #0a0a0a !important;
   width: 100% !important;
   height: 100% !important;
 }
 
 .react-flow__minimap-mask {
-  fill: rgba(13, 17, 23, 0.8) !important;
-  stroke: #30363d !important;
+  fill: rgba(0, 0, 0, 0.85) !important;
+  stroke: #27272a !important;
   stroke-width: 1px !important;
 }
 
@@ -116,8 +116,8 @@ code, pre, .font-mono {
 }
 
 .react-flow__edge-textbg {
-  fill: #161b22 !important;
-  stroke: #30363d !important;
+  fill: #0a0a0a !important;
+  stroke: #222222 !important;
   stroke-width: 1px !important;
   rx: 4px !important;
 }
@@ -127,7 +127,7 @@ code, pre, .font-mono {
   width: 6px !important;
   height: 6px !important;
   border-radius: 2px !important;
-  border: 1px solid #30363d !important;
+  border: 1px solid #27272a !important;
   background: #8b949e !important;
   transition: all 0.15s ease !important;
 }
@@ -141,5 +141,5 @@ code, pre, .font-mono {
 /* Clean Node Selection */
 .react-flow__node.selected > div {
   border-color: #58a6ff !important;
-  box-shadow: 0 0 0 1px #58a6ff, 0 8px 24px rgba(0, 0, 0, 0.6) !important;
+  box-shadow: 0 0 0 1px #58a6ff, 0 8px 24px rgba(0, 0, 0, 0.8) !important;
 }

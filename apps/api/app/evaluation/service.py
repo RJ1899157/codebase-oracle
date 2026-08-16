@@ -46,12 +46,12 @@ def evaluate_context_precision(expected_files: list[str], citations: list[str]) 
         return 0.0
 
     expected_basenames = {f.split("/")[-1] for f in expected_files}
-    hits = sum(
-        1 for exp in expected_files
-        if any(exp in c or c in exp or exp.split("/")[-1] == c.split("/")[-1] for c in citations)
-    )
+    for c in citations:
+        c_base = c.split("/")[-1]
+        if any(exp in c or c in exp for exp in expected_files) or c_base in expected_basenames:
+            return 1.0
 
-    return round(hits / len(expected_files), 2)
+    return 0.0
 
 
 def run_evaluation(

@@ -62,7 +62,7 @@ const KIND_CONFIG: Record<
   },
   call: {
     label: "CALL",
-    badgeBg: "bg-[#21262d] border border-[#30363d] text-[#8b949e]",
+    badgeBg: "bg-[#161616] border border-[#27272a] text-[#8b949e]",
     indicatorColor: "#8b949e",
     icon: Code2,
   },
@@ -71,7 +71,7 @@ const KIND_CONFIG: Record<
 export const CustomCodeNode = memo(({ data, selected }: CustomCodeNodeProps) => {
   const config = KIND_CONFIG[data.kind] || {
     label: (data.kind || "SYMBOL").toUpperCase(),
-    badgeBg: "bg-[#21262d] border border-[#30363d] text-[#8b949e]",
+    badgeBg: "bg-[#161616] border border-[#27272a] text-[#8b949e]",
     indicatorColor: "#8b949e",
     icon: Code2,
   };
@@ -83,8 +83,8 @@ export const CustomCodeNode = memo(({ data, selected }: CustomCodeNodeProps) => 
     <div
       className={`group relative min-w-[200px] max-w-[270px] rounded-md p-3 transition-all duration-150 ${
         selected
-          ? "bg-[#1f242c] border-2 border-[#58a6ff] shadow-xl scale-[1.02]"
-          : "bg-[#161b22] hover:bg-[#1c2128] border border-[#30363d] hover:border-[#484f58]"
+          ? "bg-[#12161f] border-2 border-[#58a6ff] shadow-xl scale-[1.02]"
+          : "bg-[#0a0a0a] hover:bg-[#111111] border border-[#222222] hover:border-[#383838]"
       }`}
     >
       {/* Handles */}
@@ -126,11 +126,11 @@ export const CustomCodeNode = memo(({ data, selected }: CustomCodeNodeProps) => 
 
       {/* Subtitle File Path */}
       {data.file_path && (
-        <div className="mt-2 pt-1.5 border-t border-[#21262d] flex items-center justify-between text-[10px] font-mono text-[#8b949e]">
+        <div className="mt-2 pt-1.5 border-t border-[#1a1a1a] flex items-center justify-between text-[10px] font-mono text-[#8b949e]">
           <span className="truncate max-w-[160px]" title={data.file_path}>
             {fileName || data.file_path}
           </span>
-          <span className="text-[9px] text-[#484f58] font-bold uppercase">AST</span>
+          <span className="text-[9px] text-[#52525b] font-bold uppercase">AST</span>
         </div>
       )}
     </div>
