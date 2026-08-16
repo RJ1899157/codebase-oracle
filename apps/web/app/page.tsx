@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   ReactFlow,
   Background,
@@ -29,6 +29,8 @@ import {
   X,
   ArrowRight,
   Zap,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 
 import { CustomCodeNode } from "@/components/CustomCodeNode";
@@ -158,7 +160,7 @@ export default function App() {
   const [selectedNode, setSelectedNode] = useState<any | null>(null);
 
   const [activeRightTab, setActiveRightTab] = useState<"chat" | "benchmark">("chat");
-  const [showHelpGuide, setShowHelpGuide] = useState(true);
+  const [showHelpGuide, setShowHelpGuide] = useState(false);
   const [evalResult, setEvalResult] = useState<any | null>(null);
   const [isEvaluating, setIsEvaluating] = useState(false);
 
@@ -176,11 +178,29 @@ export default function App() {
       });
   }, []);
 
+  // Category counts
+  const categoryCounts = useMemo(() => {
+    const counts = { all: allNodes.length, class: 0, function: 0, file: 0 };
+    allNodes.forEach((n) => {
+      const k = (n.data as any)?.kind;
+      if (k === "class" || k === "interface" || k === "struct") counts.class++;
+      else if (k === "function") counts.function++;
+      else if (k === "file" || k === "module") counts.file++;
+    });
+    return counts;
+  }, [allNodes]);
+
   const filterNodes = useCallback(
     (kind: string, query: string, rawNodes: Node[], rawEdges: Edge[]) => {
       let filtered = rawNodes;
       if (kind !== "all") {
-        filtered = filtered.filter((n) => (n.data as any)?.kind === kind);
+        if (kind === "class") {
+          filtered = filtered.filter((n) => ["class", "interface", "struct"].includes((n.data as any)?.kind));
+        } else if (kind === "file") {
+          filtered = filtered.filter((n) => ["file", "module"].includes((n.data as any)?.kind));
+        } else {
+          filtered = filtered.filter((n) => (n.data as any)?.kind === kind);
+        }
       }
       if (query.trim()) {
         const q = query.toLowerCase();
@@ -403,7 +423,7 @@ export default function App() {
         {/* Right: Telemetry Status & Actions */}
         <div className="flex items-center gap-3 font-mono text-xs">
           <div className="flex items-center gap-2 px-2.5 py-1 rounded-md bg-[#111111] border border-[#222222] text-[11px] text-[#a1a1aa]">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#10b981]" />
+            <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-pulse" />
             <span className="truncate max-w-[140px] font-medium">{activeModel}</span>
           </div>
 
@@ -429,31 +449,25 @@ export default function App() {
       </header>
 
       {/* ========================================================================= */}
-      {/* GUIDED STEP-BY-STEP ONBOARDING BANNER */}
+      {/* GUIDED ONBOARDING BANNER (TOGGLEABLE) */}
       {/* ========================================================================= */}
       {showHelpGuide && (
         <div className="px-5 py-2 border-b border-[#222222] bg-[#0a0a0a] flex items-center justify-between text-xs text-[#a1a1aa] font-mono">
           <div className="flex items-center gap-5">
-            <span className="font-bold text-white uppercase tracking-wider">Quick Start:</span>
+            <span className="font-bold text-white uppercase tracking-wider">Guide:</span>
             <div className="flex items-center gap-2">
-              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${!githubUrl ? "bg-white text-black" : "bg-[#18181b] text-[#a1a1aa]"}`}>
-                1
-              </span>
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-white text-black">1</span>
               <span>Paste repo URL or click sample</span>
             </div>
             <ArrowRight className="w-3 h-3 text-[#52525b]" />
             <div className="flex items-center gap-2">
-              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${nodes.length > 0 ? "bg-white text-black" : "bg-[#18181b] text-[#a1a1aa]"}`}>
-                2
-              </span>
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#18181b] text-[#a1a1aa]">2</span>
               <span>Filter symbols & explore technical blueprint</span>
             </div>
             <ArrowRight className="w-3 h-3 text-[#52525b]" />
             <div className="flex items-center gap-2">
-              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${messages.length > 0 ? "bg-white text-black" : "bg-[#18181b] text-[#a1a1aa]"}`}>
-                3
-              </span>
-              <span>Ask questions with verified code citations</span>
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#18181b] text-[#a1a1aa]">3</span>
+              <span>Ask architectural queries with verified citations</span>
             </div>
           </div>
           <button
@@ -473,7 +487,7 @@ export default function App() {
         {/* ZONE 2: TECHNICAL BLUEPRINT GRAPH EXPLORER (Left 65%) */}
         {/* ======================================================================= */}
         <section className="flex-1 flex flex-col relative border-r border-[#222222] bg-[#000000]">
-          {/* Graph Toolbar: Search, Kind Filter Tabs, Layout Switcher */}
+          {/* Graph Toolbar: Search, Kind Filter Tabs with Counts, Layout Switcher */}
           <div className="h-11 px-4 border-b border-[#222222] bg-[#0a0a0a] flex items-center justify-between shrink-0 z-10">
             {/* Search Filter */}
             <div className="flex items-center gap-2">
@@ -493,22 +507,36 @@ export default function App() {
 
               <div className="h-4 w-[1px] bg-[#222222]" />
 
-              {/* Symbol Kind Filter Tabs */}
+              {/* Symbol Kind Filter Tabs with Counts */}
               <div className="flex items-center gap-1 font-mono text-[11px]">
-                {["all", "class", "function", "file"].map((k) => (
+                {[
+                  { id: "all", label: "ALL", count: categoryCounts.all },
+                  { id: "class", label: "CLASS", count: categoryCounts.class },
+                  { id: "function", label: "FUNCTION", count: categoryCounts.function },
+                  { id: "file", label: "FILE", count: categoryCounts.file },
+                ].map((tab) => (
                   <button
-                    key={k}
+                    key={tab.id}
                     onClick={() => {
-                      setSelectedKind(k);
-                      filterNodes(k, searchQuery, allNodes, allEdges);
+                      setSelectedKind(tab.id);
+                      filterNodes(tab.id, searchQuery, allNodes, allEdges);
                     }}
-                    className={`px-2.5 py-1 rounded font-semibold uppercase transition ${
-                      selectedKind === k
+                    className={`px-2.5 py-1 rounded font-semibold transition flex items-center gap-1.5 ${
+                      selectedKind === tab.id
                         ? "bg-white text-black"
                         : "text-[#a1a1aa] hover:text-white hover:bg-[#18181b]"
                     }`}
                   >
-                    {k}
+                    <span>{tab.label}</span>
+                    {tab.count > 0 && (
+                      <span
+                        className={`text-[9px] px-1 py-0.2 rounded ${
+                          selectedKind === tab.id ? "bg-black text-white" : "bg-[#27272a] text-[#a1a1aa]"
+                        }`}
+                      >
+                        {tab.count}
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
@@ -571,15 +599,22 @@ export default function App() {
                   <Background color="#1f1f1f" gap={24} size={1} />
                   <Controls className="!left-4 !bottom-4" />
                   <MiniMap
-                    className="!left-4 !bottom-16 rounded-md overflow-hidden border border-[#222222]"
+                    bgColor="#0a0a0a"
+                    maskColor="rgba(0, 0, 0, 0.85)"
+                    style={{
+                      backgroundColor: "#0a0a0a",
+                      border: "1px solid #27272a",
+                      borderRadius: "8px",
+                      width: 180,
+                      height: 110,
+                    }}
                     nodeColor={(node: any) => {
                       const k = node.data?.kind;
-                      if (k === "class") return "#f59e0b";
+                      if (k === "class" || k === "interface" || k === "struct") return "#f59e0b";
                       if (k === "function") return "#38bdf8";
-                      if (k === "file") return "#10b981";
+                      if (k === "file" || k === "module") return "#10b981";
                       return "#a1a1aa";
                     }}
-                    maskColor="rgba(0, 0, 0, 0.85)"
                   />
                 </ReactFlow>
               </div>
@@ -654,7 +689,7 @@ export default function App() {
         {/* ======================================================================= */}
         {/* ZONE 3: ARCHITECTURE AI STUDIO (Right 35% Fixed Panel) */}
         {/* ======================================================================= */}
-        <aside className="w-[450px] flex flex-col bg-[#0a0a0a] shrink-0">
+        <aside className="w-[460px] flex flex-col bg-[#0a0a0a] shrink-0">
           {/* Header Tabs: AI Studio vs RAGAS Benchmark */}
           <div className="h-11 px-4 border-b border-[#222222] flex items-center justify-between shrink-0 font-mono">
             <div className="flex items-center gap-2">
@@ -711,7 +746,7 @@ export default function App() {
                       Conversational Codebase Architect
                     </h4>
                     <p className="text-[11px] text-[#a1a1aa] mt-1 max-w-xs leading-relaxed">
-                      Grounded with AST symbols, graph connections, and Groq LLaMA 3.3 70B.
+                      Grounded with AST symbols, graph relationships, and Groq LLaMA 3.3 70B.
                     </p>
 
                     {/* Preset Architecture Questions */}
@@ -832,15 +867,25 @@ export default function App() {
                     RAGAS Quality & Faithfulness Benchmark
                   </h4>
                   <p className="text-[10px] text-[#a1a1aa] mt-0.5">
-                    Dynamic repository retrieval and negative refusal evaluation
+                    Dynamic repository retrieval and anti-hallucination evaluation
                   </p>
                 </div>
                 <button
                   onClick={handleRunEvaluation}
                   disabled={isEvaluating || !githubUrl}
-                  className="px-3 py-1 rounded bg-white hover:bg-[#e4e4e7] text-black text-xs font-bold disabled:opacity-40 transition"
+                  className="px-3 py-1.5 rounded-md bg-white hover:bg-[#e4e4e7] text-black text-xs font-bold disabled:opacity-40 transition flex items-center gap-1.5"
                 >
-                  {isEvaluating ? "Evaluating..." : "Run Benchmark"}
+                  {isEvaluating ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      Evaluating...
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="w-3.5 h-3.5 fill-black" />
+                      Run Benchmark
+                    </>
+                  )}
                 </button>
               </div>
 
@@ -851,42 +896,62 @@ export default function App() {
                 </div>
               ) : evalResult ? (
                 <div className="space-y-4">
+                  {/* Metric Cards */}
                   <div className="grid grid-cols-3 gap-2">
-                    <div className="p-3 rounded-md bg-[#000000] border border-[#222222]">
-                      <span className="text-[10px] text-[#71717a] uppercase font-bold">Faithfulness</span>
-                      <p className="text-lg font-bold text-[#10b981] mt-1">
+                    <div className="p-3 rounded-lg bg-[#000000] border border-[#222222]">
+                      <span className="text-[10px] text-[#71717a] uppercase font-bold tracking-wider">Faithfulness</span>
+                      <p className="text-xl font-black text-[#10b981] mt-1">
                         {Math.round(evalResult.mean_faithfulness * 100)}%
                       </p>
                     </div>
-                    <div className="p-3 rounded-md bg-[#000000] border border-[#222222]">
-                      <span className="text-[10px] text-[#71717a] uppercase font-bold">Precision</span>
-                      <p className="text-lg font-bold text-[#38bdf8] mt-1">
+                    <div className="p-3 rounded-lg bg-[#000000] border border-[#222222]">
+                      <span className="text-[10px] text-[#71717a] uppercase font-bold tracking-wider">Precision</span>
+                      <p className="text-xl font-black text-[#38bdf8] mt-1">
                         {Math.round(evalResult.mean_context_precision * 100)}%
                       </p>
                     </div>
-                    <div className="p-3 rounded-md bg-[#000000] border border-[#222222]">
-                      <span className="text-[10px] text-[#71717a] uppercase font-bold">Refusal Acc</span>
-                      <p className="text-lg font-bold text-white mt-1">
+                    <div className="p-3 rounded-lg bg-[#000000] border border-[#222222]">
+                      <span className="text-[10px] text-[#71717a] uppercase font-bold tracking-wider">Refusal Acc</span>
+                      <p className="text-xl font-black text-white mt-1">
                         {Math.round(evalResult.refusal_accuracy * 100)}%
                       </p>
                     </div>
                   </div>
 
+                  {/* Benchmark Cases List */}
                   <div>
-                    <h5 className="text-xs font-bold text-white uppercase mb-2">Dynamic Benchmark Test Cases</h5>
+                    <div className="flex items-center justify-between mb-2">
+                      <h5 className="text-xs font-bold text-white uppercase tracking-wider">Dynamic Test Cases</h5>
+                      <span className="text-[10px] text-[#71717a]">
+                        Passed {evalResult.passed_cases}/{evalResult.total_cases}
+                      </span>
+                    </div>
+
                     <div className="space-y-2">
                       {evalResult.details?.map((tc: any, i: number) => (
-                        <div key={i} className="p-2.5 rounded bg-[#000000] border border-[#222222] text-[11px] flex items-center justify-between">
-                          <span className="text-[#d4d4d8] truncate max-w-[280px]">{tc.question}</span>
-                          <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                              tc.passed
-                                ? "bg-emerald-950/40 text-[#10b981] border border-emerald-800/40"
-                                : "bg-rose-950/40 text-rose-400 border border-rose-800/40"
-                            }`}
-                          >
-                            {tc.passed ? "PASS" : "FAIL"}
-                          </span>
+                        <div
+                          key={i}
+                          className="p-3 rounded-lg bg-[#000000] border border-[#222222] hover:border-[#383838] transition space-y-2"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="text-xs text-white font-medium leading-snug">{tc.question}</p>
+                            <span
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase shrink-0 flex items-center gap-1 ${
+                                tc.passed
+                                  ? "bg-emerald-950/50 text-[#10b981] border border-emerald-800/50"
+                                  : "bg-rose-950/50 text-rose-400 border border-rose-800/50"
+                              }`}
+                            >
+                              {tc.passed ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
+                              {tc.passed ? "PASS" : "FAIL"}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-4 text-[10px] text-[#71717a] pt-1 border-t border-[#18181b]">
+                            <span>Faithfulness: <strong className="text-white">{Math.round(tc.faithfulness * 100)}%</strong></span>
+                            <span>Precision: <strong className="text-white">{Math.round(tc.precision * 100)}%</strong></span>
+                            <span>Refusal: <strong className="text-white">{tc.refusal_accurate ? "Accurate" : "Mismatch"}</strong></span>
+                          </div>
                         </div>
                       ))}
                     </div>

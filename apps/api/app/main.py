@@ -150,19 +150,19 @@ def get_graph(
 def _build_dynamic_eval_cases(repo_data) -> list[EvalTestCase]:
     cases: list[EvalTestCase] = []
 
-    # Prioritize substantive non-test source code symbols
-    def is_valid_source_node(n) -> bool:
+    def is_core_source_node(n) -> bool:
+        path = n.file_path.lower()
+        if any(ign in path for ign in ["docs", "tutorial", "test", "benchmark", "example", "site-packages", ".github"]):
+            return False
         ext = n.file_path.split(".")[-1].lower() if "." in n.file_path else ""
         if ext not in {"py", "ts", "js", "go", "rs", "java", "cpp", "c", "cs"}:
             return False
-        if "test" in n.file_path.lower() or "benchmark" in n.file_path.lower():
-            return False
         return len(n.name) <= 35 and n.name.isidentifier()
 
-    classes = [n for n in repo_data.batch.nodes if n.kind in {"class", "interface", "struct"} and is_valid_source_node(n)]
-    functions = [n for n in repo_data.batch.nodes if n.kind == "function" and is_valid_source_node(n)]
+    classes = [n for n in repo_data.batch.nodes if n.kind in {"class", "interface", "struct"} and is_core_source_node(n)]
+    functions = [n for n in repo_data.batch.nodes if n.kind == "function" and is_core_source_node(n)]
 
-    # Fallback to any node if specific filters yield nothing
+    # Fallback to any code node if core filter was too strict
     if not classes:
         classes = [n for n in repo_data.batch.nodes if n.kind in {"class", "interface", "struct"}]
     if not functions:
@@ -170,33 +170,36 @@ def _build_dynamic_eval_cases(repo_data) -> list[EvalTestCase]:
 
     if classes:
         target_cls = classes[0]
+        matching_files = list({n.file_path for n in repo_data.batch.nodes if n.name == target_cls.name})
         cases.append(
             EvalTestCase(
-                question=f"Where is the {target_cls.name} class defined?",
+                question=f"Where is the {target_cls.name} class defined and what is its role?",
                 ground_truth_answer=f"{target_cls.name} is defined in {target_cls.file_path}",
-                expected_files=[target_cls.file_path],
+                expected_files=matching_files or [target_cls.file_path],
                 should_refuse=False,
             )
         )
 
     if functions:
         target_fn = functions[0]
+        matching_files = list({n.file_path for n in repo_data.batch.nodes if n.name == target_fn.name})
         cases.append(
             EvalTestCase(
-                question=f"What is the implementation and role of {target_fn.name} in {target_fn.file_path}?",
+                question=f"What is the implementation and purpose of {target_fn.name} in {target_fn.file_path}?",
                 ground_truth_answer=f"{target_fn.name} is implemented in {target_fn.file_path}",
-                expected_files=[target_fn.file_path],
+                expected_files=matching_files or [target_fn.file_path],
                 should_refuse=False,
             )
         )
 
     if len(classes) > 1:
         target_cls_2 = classes[1]
+        matching_files = list({n.file_path for n in repo_data.batch.nodes if n.name == target_cls_2.name})
         cases.append(
             EvalTestCase(
                 question=f"How is {target_cls_2.name} structured in {target_cls_2.file_path}?",
                 ground_truth_answer=f"{target_cls_2.name} is in {target_cls_2.file_path}",
-                expected_files=[target_cls_2.file_path],
+                expected_files=matching_files or [target_cls_2.file_path],
                 should_refuse=False,
             )
         )

@@ -19,22 +19,6 @@ body {
   user-select: none;
 }
 
-/* Vercel Ship Modern Studio Utilities */
-.vercel-panel {
-  background: #0a0a0a;
-  border: 1px solid #222222;
-}
-
-.vercel-card {
-  background: #111111;
-  border: 1px solid #222222;
-  transition: all 0.15s ease;
-}
-
-.vercel-card:hover {
-  border-color: #383838;
-}
-
 /* Monospace & Code */
 code, pre, .font-mono {
   font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
@@ -56,13 +40,13 @@ code, pre, .font-mono {
   background: #3f3f46;
 }
 
-/* React Flow High-Contrast Vercel Controls */
+/* React Flow High-Contrast Dark Controls */
 .react-flow__controls {
   background: #0a0a0a !important;
   border: 1px solid #222222 !important;
   border-radius: 6px !important;
   overflow: hidden !important;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6) !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.8) !important;
 }
 
 .react-flow__controls-button {
@@ -87,6 +71,41 @@ code, pre, .font-mono {
   max-height: 12px !important;
 }
 
+/* FIX: Absolute Dark Minimap & Kill Any White Box */
+.react-flow__minimap {
+  background: #0a0a0a !important;
+  background-color: #0a0a0a !important;
+  border: 1px solid #27272a !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.9) !important;
+  width: 180px !important;
+  height: 110px !important;
+}
+
+.react-flow__minimap svg {
+  background: #0a0a0a !important;
+  background-color: #0a0a0a !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.react-flow__minimap-mask {
+  fill: rgba(0, 0, 0, 0.8) !important;
+  stroke: #3f3f46 !important;
+  stroke-width: 1px !important;
+}
+
+.react-flow__panel {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+.react-flow__attribution {
+  display: none !important;
+}
+
+/* React Flow Edges */
 .react-flow__edge-text {
   fill: #ffffff !important;
   font-size: 10px !important;
@@ -121,5 +140,5 @@ code, pre, .font-mono {
 /* Clean Node Selection */
 .react-flow__node.selected > div {
   border-color: #ffffff !important;
-  box-shadow: 0 0 0 1px #ffffff !important;
+  box-shadow: 0 0 0 1px #ffffff, 0 8px 24px rgba(0, 0, 0, 0.8) !important;
 }
