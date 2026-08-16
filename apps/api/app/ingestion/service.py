@@ -18,13 +18,13 @@ SUPPORTED_EXTENSIONS = {
 IGNORED_DIRS = {
     ".git", ".github", "node_modules", "dist", "build", ".next", "__pycache__",
     ".venv", "venv", "env", "target", "vendor", ".turbo", ".idea", ".vscode",
-    "coverage", ".pytest_cache", "tmp", "temp",
+    "coverage", ".pytest_cache",
 }
 
 IGNORED_EXTENSIONS = {
     ".png", ".jpg", ".jpeg", ".gif", ".ico", ".svg", ".pdf", ".zip", ".tar",
     ".gz", ".exe", ".bin", ".woff", ".woff2", ".ttf", ".eot", ".mp4", ".mp3",
-    ".pyc", ".lock", "-lock.json",
+    ".pyc", ".lock",
 }
 
 
@@ -35,9 +35,13 @@ def discover_code_files(repo_root: Path, max_files: int = 400) -> list[Path]:
         if not path.is_file():
             continue
 
-        # Skip ignored directories
-        if any(ignored in path.parts for ignored in IGNORED_DIRS):
-            continue
+        # Skip ignored directory parts (relative to repo_root)
+        try:
+            rel_parts = path.relative_to(repo_root).parts
+            if any(ignored in rel_parts for ignored in IGNORED_DIRS):
+                continue
+        except Exception:
+            pass
 
         ext = path.suffix.lower()
 
@@ -45,9 +49,8 @@ def discover_code_files(repo_root: Path, max_files: int = 400) -> list[Path]:
         if ext in IGNORED_EXTENSIONS:
             continue
 
-        # Support recognized code extensions or key repo files (Dockerfile, Makefile, etc.)
+        # Support recognized code extensions or key repo files
         if ext in SUPPORTED_EXTENSIONS or path.name in {"Dockerfile", "Makefile", "README.md"}:
-            # Avoid huge bundle files (> 400 KB)
             try:
                 if path.stat().st_size < 400_000:
                     discovered.append(path)
@@ -62,4 +65,6 @@ def discover_code_files(repo_root: Path, max_files: int = 400) -> list[Path]:
 
 # Backward compatibility alias
 def discover_python_files(repo_root: Path) -> list[Path]:
-    return discover_code_files(repo_root)
+    # If explicitly searching for python files in older tests, return py files
+    files = discover_code_files(repo_root)
+    return [f for f in files if f.suffix.lower() in {".py", ".pyw"}]

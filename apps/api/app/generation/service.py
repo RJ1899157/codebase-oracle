@@ -24,14 +24,12 @@ def generate_answer(
     history: list[ChatMessage] | None = None,
 ) -> AnswerResult:
     if not context or all(item.score <= 0.0 for item in context):
-        # If we have chat history, check if this is a conversational query before strict refusal
-        if not history:
-            return AnswerResult(
-                answer="",
-                citations=[],
-                refused=True,
-                reason="Insufficient context found in repository to answer this question accurately.",
-            )
+        return AnswerResult(
+            answer="",
+            citations=[],
+            refused=True,
+            reason="insufficient_context",
+        )
 
     # Build deep citations for the top matches
     citations: list[Citation] = []
@@ -54,27 +52,27 @@ def generate_answer(
         )
 
     prompt = format_context_for_prompt(question, context or [], max_chunks=6)
-    llm_output, error_msg = generate_with_llm(prompt, history=history)
+    res = generate_with_llm(prompt, history=history)
+    if isinstance(res, tuple):
+        llm_output, error_msg = res
+    else:
+        llm_output, error_msg = str(res), None
 
     if llm_output.startswith("REFUSAL:"):
         return AnswerResult(
             answer="",
             citations=citations,
             refused=True,
-            reason=llm_output.replace("REFUSAL:", "").strip(),
+            reason=llm_output.replace("REFUSAL:", "").strip() or "insufficient_context",
         )
 
     if not llm_output:
-        if context:
-            top = context[0]
-            fallback_msg = (
-                f"**Local Graph Evidence Found**:\n"
-                f"The primary implementation for `{question}` is located in `{top.chunk.file_path}` "
-                f"(lines {top.chunk.start_line}–{top.chunk.end_line}).\n\n"
-            )
-        else:
-            fallback_msg = "Could not synthesize response from repository context.\n\n"
-
+        top = context[0]
+        fallback_msg = (
+            f"**Local Graph Evidence Found**:\n"
+            f"The primary implementation for `{question}` is located in `{top.chunk.file_path}` "
+            f"(lines {top.chunk.start_line}–{top.chunk.end_line}).\n\n"
+        )
         if error_msg:
             fallback_msg += f"> ⚠️ **LLM Diagnostic Notice**: `{error_msg}`"
 

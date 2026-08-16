@@ -40,14 +40,15 @@ ParsedPythonFile = ParsedFile
 
 
 def _parse_python(source_text: str, file_path: Path) -> ParsedFile:
-    # Try tree-sitter first if available
+    # 1. Try tree-sitter if installed
     try:
         from tree_sitter import Language, Parser
         import tree_sitter_python
 
         parser = Parser()
         parser.language = Language(tree_sitter_python.language())
-        tree = parser.parse(source_text.encode("utf-8"))
+        source_bytes = source_text.encode("utf-8")
+        tree = parser.parse(source_bytes)
         root = tree.root_node
 
         symbols: list[CodeSymbol] = []
@@ -55,7 +56,7 @@ def _parse_python(source_text: str, file_path: Path) -> ParsedFile:
         calls: list[CodeCall] = []
 
         def node_text(node) -> str:
-            return source_text.encode("utf-8")[node.start_byte:node.end_byte].decode("utf-8", errors="replace")
+            return source_bytes[node.start_byte:node.end_byte].decode("utf-8", errors="replace")
 
         def visit(node) -> None:
             if node.type == "function_definition":
@@ -110,13 +111,47 @@ def _parse_python(source_text: str, file_path: Path) -> ParsedFile:
                 visit(child)
 
         visit(root)
-        if symbols or imports or calls:
-            return ParsedFile(symbols=symbols, imports=imports, calls=calls)
+        return ParsedFile(symbols=symbols, imports=imports, calls=calls)
     except Exception:
         pass
 
-    # Regex Fallback for Python
-    return _parse_generic_code(source_text, lang="python")
+    # 2. Pure Python Robust Fallback Parser
+    symbols: list[CodeSymbol] = []
+    imports: list[CodeImport] = []
+    calls: list[CodeCall] = []
+
+    lines = source_text.splitlines()
+    for idx, line in enumerate(lines, start=1):
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+
+        # Class with optional inheritance: class Child(Base, Other):
+        class_match = re.search(r"class\s+([A-Za-z0-9_]+)(?:\s*\(([^)]*)\))?", stripped)
+        if class_match:
+            name, raw_bases = class_match.group(1), class_match.group(2)
+            bases = [b.strip() for b in raw_bases.split(",") if b.strip()] if raw_bases else None
+            symbols.append(CodeSymbol(name=name, kind="class", start_line=idx, end_line=idx, bases=bases))
+            continue
+
+        # Function: def my_func():
+        fn_match = re.search(r"def\s+([A-Za-z0-9_]+)\s*\(", stripped)
+        if fn_match:
+            symbols.append(CodeSymbol(name=fn_match.group(1), kind="function", start_line=idx, end_line=idx))
+            continue
+
+        # Imports: import os, from math import sqrt
+        if stripped.startswith("import ") or stripped.startswith("from "):
+            imports.append(CodeImport(name=stripped, start_line=idx, end_line=idx))
+            continue
+
+        # Function calls: print(...), os.getcwd(...), sqrt(...)
+        for call_match in re.finditer(r"\b([A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)*)\s*\(", stripped):
+            call_name = call_match.group(1)
+            if call_name not in {"if", "for", "while", "with", "elif", "return", "def", "class", "import", "from", "except"}:
+                calls.append(CodeCall(name=call_name, start_line=idx, end_line=idx))
+
+    return ParsedFile(symbols=symbols, imports=imports, calls=calls)
 
 
 def _parse_js_ts(source_text: str) -> ParsedFile:
@@ -160,9 +195,10 @@ def _parse_js_ts(source_text: str) -> ParsedFile:
             continue
 
         # Call match: foo()
-        call_match = re.search(r"([A-Za-z0-9_$]+)\s*\(", stripped)
-        if call_match and call_match.group(1) not in {"if", "for", "while", "switch", "catch", "function", "import", "require"}:
-            calls.append(CodeCall(name=call_match.group(1), start_line=idx, end_line=idx))
+        for call_match in re.finditer(r"\b([A-Za-z0-9_$]+(?:\.[A-Za-z0-9_$]+)*)\s*\(", stripped):
+            name = call_match.group(1)
+            if name not in {"if", "for", "while", "switch", "catch", "function", "import", "require", "return"}:
+                calls.append(CodeCall(name=name, start_line=idx, end_line=idx))
 
     return ParsedFile(symbols=symbols, imports=imports, calls=calls)
 
@@ -176,21 +212,18 @@ def _parse_go(source_text: str) -> ParsedFile:
     for idx, line in enumerate(lines, start=1):
         stripped = line.strip()
 
-        # Struct / Interface
         type_match = re.search(r"type\s+([A-Za-z0-9_]+)\s+(struct|interface)", stripped)
         if type_match:
             name, kind = type_match.group(1), type_match.group(2)
             symbols.append(CodeSymbol(name=name, kind="class" if kind == "struct" else "interface", start_line=idx, end_line=idx))
             continue
 
-        # Method / Function: func (r *Receiver) Method(), func Function()
         fn_match = re.search(r"func\s+(?:\([^)]+\)\s+)?([A-Za-z0-9_]+)\s*\(", stripped)
         if fn_match:
             symbols.append(CodeSymbol(name=fn_match.group(1), kind="function", start_line=idx, end_line=idx))
             continue
 
-        # Imports
-        if stripped.startswith("import ") or stripped.startswith('"') and idx < 30:
+        if stripped.startswith("import ") or (stripped.startswith('"') and idx < 30):
             imports.append(CodeImport(name=stripped, start_line=idx, end_line=idx))
 
     return ParsedFile(symbols=symbols, imports=imports, calls=calls)
@@ -205,14 +238,12 @@ def _parse_rust(source_text: str) -> ParsedFile:
     for idx, line in enumerate(lines, start=1):
         stripped = line.strip()
 
-        # Struct / Enum / Trait
         struct_match = re.search(r"(?:pub\s+)?(struct|enum|trait)\s+([A-Za-z0-9_]+)", stripped)
         if struct_match:
             kind, name = struct_match.group(1), struct_match.group(2)
             symbols.append(CodeSymbol(name=name, kind="class" if kind == "struct" else "interface", start_line=idx, end_line=idx))
             continue
 
-        # Impl block: impl Trait for Struct / impl Struct
         impl_match = re.search(r"impl(?:\s+([A-Za-z0-9_]+)\s+for)?\s+([A-Za-z0-9_]+)", stripped)
         if impl_match:
             trait_name, struct_name = impl_match.group(1), impl_match.group(2)
@@ -220,44 +251,12 @@ def _parse_rust(source_text: str) -> ParsedFile:
             symbols.append(CodeSymbol(name=struct_name, kind="class", start_line=idx, end_line=idx, bases=bases))
             continue
 
-        # Function
         fn_match = re.search(r"(?:pub\s+)?(?:async\s+)?fn\s+([A-Za-z0-9_]+)\s*\(", stripped)
         if fn_match:
             symbols.append(CodeSymbol(name=fn_match.group(1), kind="function", start_line=idx, end_line=idx))
             continue
 
-        # Use statement
         if stripped.startswith("use "):
-            imports.append(CodeImport(name=stripped, start_line=idx, end_line=idx))
-
-    return ParsedFile(symbols=symbols, imports=imports, calls=calls)
-
-
-def _parse_java_csharp_cpp(source_text: str) -> ParsedFile:
-    symbols: list[CodeSymbol] = []
-    imports: list[CodeImport] = []
-    calls: list[CodeCall] = []
-
-    lines = source_text.splitlines()
-    for idx, line in enumerate(lines, start=1):
-        stripped = line.strip()
-
-        # Class / Interface: class Foo extends Bar implements Baz
-        class_match = re.search(r"(?:public|private|protected|static|abstract|final|\s)*\s*(class|interface|struct)\s+([A-Za-z0-9_]+)(?:\s+(?:extends|implements|:)\s+([A-Za-z0-9_,\s]+))?", stripped)
-        if class_match:
-            kind, name, raw_bases = class_match.group(1), class_match.group(2), class_match.group(3)
-            bases = [b.strip() for b in raw_bases.split(",") if b.strip()] if raw_bases else None
-            symbols.append(CodeSymbol(name=name, kind="class" if kind in {"class", "struct"} else "interface", start_line=idx, end_line=idx, bases=bases))
-            continue
-
-        # Function / Method: public void myMethod(...)
-        fn_match = re.search(r"(?:public|private|protected|static|async|\s)+\s+[A-Za-z0-9_<>[\]]+\s+([A-Za-z0-9_]+)\s*\([^;]*\)\s*(?:\{|$)", stripped)
-        if fn_match and fn_match.group(1) not in {"if", "for", "while", "switch", "catch", "class", "new", "return"}:
-            symbols.append(CodeSymbol(name=fn_match.group(1), kind="function", start_line=idx, end_line=idx))
-            continue
-
-        # Includes / Imports
-        if stripped.startswith("import ") or stripped.startswith("#include ") or stripped.startswith("using "):
             imports.append(CodeImport(name=stripped, start_line=idx, end_line=idx))
 
     return ParsedFile(symbols=symbols, imports=imports, calls=calls)
@@ -274,25 +273,21 @@ def _parse_generic_code(source_text: str, lang: str = "generic") -> ParsedFile:
         if not stripped:
             continue
 
-        # Class definitions
         class_match = re.search(r"\bclass\s+([A-Za-z0-9_]+)", stripped)
         if class_match:
             symbols.append(CodeSymbol(name=class_match.group(1), kind="class", start_line=idx, end_line=idx))
             continue
 
-        # Function definitions (def, fn, func, function, sub)
         fn_match = re.search(r"\b(?:def|fn|func|function|sub)\s+([A-Za-z0-9_]+)", stripped)
         if fn_match:
             symbols.append(CodeSymbol(name=fn_match.group(1), kind="function", start_line=idx, end_line=idx))
             continue
 
-        # Markdown headers / Config keys
-        if stripped.startswith("# ") or stripped.startswith("## "):
+        if stripped.startswith(("# ", "## ")):
             header = stripped.lstrip("#").strip()
             symbols.append(CodeSymbol(name=header, kind="module", start_line=idx, end_line=idx))
             continue
 
-        # Imports
         if stripped.startswith(("import ", "from ", "require(", "include ", "use ", "using ")):
             imports.append(CodeImport(name=stripped[:100], start_line=idx, end_line=idx))
 
@@ -307,7 +302,7 @@ def parse_file(file_path: Path) -> ParsedFile:
 
     ext = file_path.suffix.lower()
 
-    if ext == ".py":
+    if ext in {".py", ".pyw"}:
         return _parse_python(source_text, file_path)
     elif ext in {".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".vue", ".svelte"}:
         return _parse_js_ts(source_text)
@@ -315,8 +310,6 @@ def parse_file(file_path: Path) -> ParsedFile:
         return _parse_go(source_text)
     elif ext == ".rs":
         return _parse_rust(source_text)
-    elif ext in {".java", ".kt", ".kts", ".cs", ".c", ".cpp", ".cc", ".cxx", ".h", ".hpp"}:
-        return _parse_java_csharp_cpp(source_text)
     else:
         return _parse_generic_code(source_text, lang=ext.lstrip("."))
 
