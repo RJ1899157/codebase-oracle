@@ -2,19 +2,18 @@
 
 <div align="center">
 
-![Codebase Oracle Banner](https://img.shields.io/badge/Architecture-GraphRAG%202.0-blue?style=for-the-badge&logo=graphql)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-codebase--oracle.vercel.app-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://codebase-oracle.vercel.app/)
+![Architecture](https://img.shields.io/badge/Architecture-GraphRAG%202.0-blue?style=for-the-badge&logo=graphql)
 ![Three.js](https://img.shields.io/badge/3D%20Engine-Three.js%20WebGL-black?style=for-the-badge&logo=three.js)
 ![Next.js](https://img.shields.io/badge/Next.js-15-black?style=for-the-badge&logo=next.js)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?style=for-the-badge&logo=fastapi)
-![Neo4j](https://img.shields.io/badge/Neo4j-5.26-008CC1?style=for-the-badge&logo=neo4j)
-![Qdrant](https://img.shields.io/badge/Qdrant-v1.12-DC2626?style=for-the-badge&logo=qdrant)
 ![Groq LLaMA 3.3 70B](https://img.shields.io/badge/LLM-Groq%20LLaMA%203.3%2070B-F05032?style=for-the-badge&logo=meta)
 ![RAGAS Faithfulness](https://img.shields.io/badge/RAGAS%20Faithfulness-92%25-success?style=for-the-badge)
 ![RAGAS Precision](https://img.shields.io/badge/RAGAS%20Precision-100%25-success?style=for-the-badge)
 
 **An intelligent codebase knowledge graph, multi-dimensional 2D/3D WebGL architecture visualizer, and conversational assistant with verified GitHub citations & dynamic RAGAS evaluation.**
 
-[Features](#-key-features) • [3D Cosmos Engine](#-3d-webgl-cosmos-engine) • [Architecture](#-architecture) • [Getting Started](#-quickstart) • [Evaluation](#-dynamic-ragas-benchmark) • [API Docs](#-api-endpoints)
+[🚀 Live Web App](https://codebase-oracle.vercel.app/) • [Features](#-key-features) • [3D Cosmos Engine](#-3d-webgl-cosmos-engine) • [Architecture](#-architecture) • [Getting Started](#-quickstart) • [Evaluation](#-dynamic-ragas-benchmark)
 
 </div>
 
