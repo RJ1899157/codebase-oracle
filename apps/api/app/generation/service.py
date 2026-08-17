@@ -76,7 +76,9 @@ def generate_answer(
     )
 
     llm_lower = llm_output.strip().lower()
-    is_refusal = any(phrase in llm_lower for phrase in REFUSAL_PHRASES)
+    is_explicit_refusal = llm_lower.startswith("refusal:") or llm_lower.startswith("refusal")
+    is_short_refusal = len(llm_output.strip()) < 300 and any(phrase in llm_lower for phrase in REFUSAL_PHRASES)
+    is_refusal = is_explicit_refusal or is_short_refusal
 
     if is_refusal:
         reason_text = llm_output.replace("REFUSAL:", "").strip() if llm_output.startswith("REFUSAL:") else "insufficient_context"

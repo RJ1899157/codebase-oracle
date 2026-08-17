@@ -23,7 +23,16 @@ CRITICAL ARCHITECTURAL GUIDELINES:
 4. Be precise, accurate, and avoid making up non-existent files or functions.
 """
 
-STABLE_GROQ_MODELS = [
+import re
+
+BROWSER_USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+
+FALLBACK_GROQ_MODELS = [
+    "openai/gpt-oss-120b",
+    "groq/compound-mini",
+    "openai/gpt-oss-20b",
+    "qwen/qwen3.6-27b",
+    "groq/compound",
     "llama-3.3-70b-versatile",
     "llama-3.1-8b-instant",
 ]
@@ -36,13 +45,49 @@ GEMINI_MODELS = [
 ]
 
 
+def clean_llm_response(text: str) -> str:
+    """Strips internal chain-of-thought think tags from reasoning models while preserving the full answer."""
+    if "</think>" in text:
+        after_think = text.split("</think>", 1)[1].strip()
+        if after_think:
+            return after_think
+    cleaned = re.sub(r"<\/?think>", "", text).strip()
+    return cleaned
+
+
+def get_live_groq_models(api_key: str) -> list[str]:
+    """Dynamically queries Groq's live /openai/v1/models endpoint to only use models active for this key."""
+    headers = {
+        "Authorization": f"Bearer {api_key.strip()}",
+        "User-Agent": BROWSER_USER_AGENT,
+    }
+    req = urllib.request.Request("https://api.groq.com/openai/v1/models", headers=headers)
+    try:
+        with urllib.request.urlopen(req, timeout=5) as response:
+            res = json.loads(response.read().decode("utf-8"))
+            live_models = [
+                m["id"] for m in res.get("data", [])
+                if m.get("active", True) and not any(x in m["id"].lower() for x in ["whisper", "guard", "audio", "orpheus"])
+            ]
+            prioritized = []
+            for preferred in FALLBACK_GROQ_MODELS:
+                if preferred in live_models and preferred not in prioritized:
+                    prioritized.append(preferred)
+            for m in live_models:
+                if m not in prioritized:
+                    prioritized.append(m)
+            return prioritized or FALLBACK_GROQ_MODELS
+    except Exception as e:
+        print(f"[Groq Live Model Discovery Notice]: {e}")
+        return FALLBACK_GROQ_MODELS
+
+
 def call_groq(prompt: str, api_key: str, model_name: str | None = None, history: list[ChatMessage] | None = None) -> str:
     url = "https://api.groq.com/openai/v1/chat/completions"
     
-    # Strictly only try verified active production models
-    models_to_try = list(STABLE_GROQ_MODELS)
-    if model_name and model_name in models_to_try:
-        models_to_try = [model_name] + [m for m in models_to_try if m != model_name]
+    live_models = get_live_groq_models(api_key)
+    models_to_try = [model_name] if model_name and model_name in live_models else []
+    models_to_try.extend([m for m in live_models if m not in models_to_try])
 
     messages = [{"role": "system", "content": SYSTEM_PROMPT}]
     if history:
@@ -58,12 +103,13 @@ def call_groq(prompt: str, api_key: str, model_name: str | None = None, history:
         headers = {
             "Authorization": f"Bearer {api_key.strip()}",
             "Content-Type": "application/json",
-            "User-Agent": "CodebaseOracle/1.0",
+            "User-Agent": BROWSER_USER_AGENT,
         }
         payload = {
             "model": model,
             "messages": messages,
             "temperature": 0.2,
+            "max_tokens": 1200,
         }
 
         req = urllib.request.Request(
@@ -73,16 +119,17 @@ def call_groq(prompt: str, api_key: str, model_name: str | None = None, history:
             method="POST",
         )
         try:
-            with urllib.request.urlopen(req, timeout=30) as response:
+            with urllib.request.urlopen(req, timeout=20) as response:
                 res = json.loads(response.read().decode("utf-8"))
-                return res["choices"][0]["message"]["content"]
+                raw_text = res["choices"][0]["message"]["content"]
+                return clean_llm_response(raw_text)
         except urllib.error.HTTPError as e:
             last_error = e.read().decode("utf-8")
             print(f"[Groq Model {model} Error {e.code}]: {last_error}")
             continue
         except Exception as e:
             last_error = str(e)
-            print(f"[Groq Exception]: {last_error}")
+            print(f"[Groq Exception {model}]: {last_error}")
             continue
 
     raise RuntimeError(f"Groq API Error: {last_error}")
@@ -111,7 +158,10 @@ def call_gemini(prompt: str, api_key: str, model_name: str | None = None, histor
             continue
         for api_version in ["v1beta", "v1"]:
             url = f"https://generativelanguage.googleapis.com/{api_version}/models/{model}:generateContent?key={api_key.strip()}"
-            headers = {"Content-Type": "application/json"}
+            headers = {
+                "Content-Type": "application/json",
+                "User-Agent": BROWSER_USER_AGENT,
+            }
             payload = {
                 "contents": contents,
                 "generationConfig": {"temperature": 0.2},
