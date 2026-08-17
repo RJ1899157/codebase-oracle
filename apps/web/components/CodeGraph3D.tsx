@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState, useMemo } from "react";
+import React, { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import {
@@ -9,8 +9,16 @@ import {
   Minus,
   Plus,
   Compass,
+  Eye,
+  EyeOff,
+  Crosshair,
+  Layers,
+  Search,
   ExternalLink,
-  Code2,
+  Zap,
+  Activity,
+  Box,
+  X,
 } from "lucide-react";
 
 interface NodeData {
@@ -53,12 +61,12 @@ function createTextSprite(text: string, color: string): THREE.Sprite {
   canvas.width = 256;
   canvas.height = 64;
 
-  ctx.fillStyle = "rgba(13, 17, 23, 0.88)";
+  ctx.fillStyle = "rgba(10, 10, 10, 0.88)";
   ctx.beginPath();
   ctx.roundRect(6, 6, 244, 52, 14);
   ctx.fill();
 
-  ctx.strokeStyle = "rgba(88, 166, 255, 0.25)";
+  ctx.strokeStyle = "rgba(88, 166, 255, 0.28)";
   ctx.lineWidth = 2;
   ctx.stroke();
 
@@ -90,14 +98,19 @@ export default function CodeGraph3D({
   const containerRef = useRef<HTMLDivElement>(null);
   const [autoRotate, setAutoRotate] = useState(true);
   const [showLabels, setShowLabels] = useState(true);
+  const [particleSpeed, setParticleSpeed] = useState<"slow" | "normal" | "fast">("normal");
   const [hoveredNode, setHoveredNode] = useState<NodeData | null>(null);
+  const [cameraPreset, setCameraPreset] = useState<"orbit" | "birdseye" | "core">("orbit");
+  const [searchQuery, setSearchQuery] = useState("");
 
   // References for Three.js
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
   const nodeMeshMap = useRef<Map<string, THREE.Mesh>>(new Map());
+  const posMapRef = useRef<Map<string, THREE.Vector3>>(new Map());
   const spritesRef = useRef<THREE.Sprite[]>([]);
+  const selectionRingRef = useRef<THREE.Mesh | null>(null);
 
   // Telemetry Metrics
   const stats = useMemo(() => {
@@ -116,23 +129,23 @@ export default function CodeGraph3D({
     const width = container.clientWidth;
     const height = container.clientHeight;
 
-    // 1. Scene with Space Nebula Aesthetic
+    // 1. Scene
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x020408);
-    scene.fog = new THREE.FogExp2(0x020408, 0.0006);
+    scene.background = new THREE.Color(0x000000);
+    scene.fog = new THREE.FogExp2(0x000000, 0.0005);
     sceneRef.current = scene;
 
     // 2. Camera
-    const camera = new THREE.PerspectiveCamera(55, width / height, 0.1, 4000);
-    camera.position.set(0, 140, 460);
+    const camera = new THREE.PerspectiveCamera(55, width / height, 0.1, 4500);
+    camera.position.set(0, 150, 480);
     cameraRef.current = camera;
 
-    // 3. Renderer with Anti-Aliasing
+    // 3. Renderer with High Dynamic Range Tone Mapping
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.2;
+    renderer.toneMappingExposure = 1.25;
     container.innerHTML = "";
     container.appendChild(renderer.domElement);
 
@@ -142,27 +155,23 @@ export default function CodeGraph3D({
     controls.dampingFactor = 0.04;
     controls.autoRotate = autoRotate;
     controls.autoRotateSpeed = 0.7;
-    controls.maxDistance = 1800;
-    controls.minDistance = 50;
+    controls.maxDistance = 2000;
+    controls.minDistance = 40;
     controlsRef.current = controls;
 
-    // 5. Dynamic Lighting (Key Light + Fill Light)
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
+    // 5. Lights
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
     scene.add(ambientLight);
 
-    const keyLight = new THREE.PointLight(0x58a6ff, 2.0, 1500);
-    keyLight.position.set(200, 300, 300);
-    scene.add(keyLight);
+    const cyanLight = new THREE.PointLight(0x58a6ff, 2.2, 1600);
+    cyanLight.position.set(250, 350, 300);
+    scene.add(cyanLight);
 
-    const warmLight = new THREE.PointLight(0xd29922, 1.8, 1500);
-    warmLight.position.set(-250, -200, -250);
-    scene.add(warmLight);
+    const amberLight = new THREE.PointLight(0xd29922, 1.8, 1600);
+    amberLight.position.set(-250, -200, -250);
+    scene.add(amberLight);
 
-    const purpleLight = new THREE.PointLight(0xa371f7, 1.5, 1200);
-    purpleLight.position.set(0, -300, 200);
-    scene.add(purpleLight);
-
-    // 6. Multi-Layer Cosmic Starfield & Nebula Particle Dust
+    // 6. Multi-Layer Cosmic Starfield Dust
     const createStarLayer = (count: number, size: number, color: number, range: number) => {
       const geo = new THREE.BufferGeometry();
       const pos = new Float32Array(count * 3);
@@ -182,12 +191,12 @@ export default function CodeGraph3D({
       return new THREE.Points(geo, mat);
     };
 
-    const starsWhite = createStarLayer(900, 2.0, 0xd0e8ff, 2200);
-    const starsBlue = createStarLayer(500, 3.0, 0x58a6ff, 1800);
-    const starsAmber = createStarLayer(300, 2.5, 0xd29922, 1600);
-    scene.add(starsWhite);
-    scene.add(starsBlue);
-    scene.add(starsAmber);
+    const stars1 = createStarLayer(1000, 2.0, 0xd0e8ff, 2500);
+    const stars2 = createStarLayer(600, 3.0, 0x58a6ff, 1800);
+    const stars3 = createStarLayer(300, 2.5, 0xd29922, 1500);
+    scene.add(stars1);
+    scene.add(stars2);
+    scene.add(stars3);
 
     // 7. Calculate 3D Orbital Positions
     const posMap = new Map<string, THREE.Vector3>();
@@ -204,6 +213,7 @@ export default function CodeGraph3D({
     const moduleKeys = Object.keys(moduleGroups);
     const modCount = moduleKeys.length;
 
+    // Create concentric subtle planetary orbital rings for modules
     moduleKeys.forEach((modKey, modIdx) => {
       const modAngle = (modIdx / Math.max(modCount, 1)) * Math.PI * 2;
       const modRadius = 240 + (modIdx % 2) * 45;
@@ -212,6 +222,19 @@ export default function CodeGraph3D({
         Math.sin(modIdx * 1.6) * 55 + ((modIdx % 3) - 1) * 35,
         Math.sin(modAngle) * modRadius
       );
+
+      // Subsystem Ring Loop
+      const ringGeo = new THREE.RingGeometry(65, 66, 48);
+      const ringMat = new THREE.MeshBasicMaterial({
+        color: 0x3fb950,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.12,
+      });
+      const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+      ringMesh.position.copy(modCenter);
+      ringMesh.rotation.x = Math.PI / 2;
+      scene.add(ringMesh);
 
       const groupNodes = moduleGroups[modKey];
       groupNodes.forEach((node, nodeIdx) => {
@@ -222,10 +245,10 @@ export default function CodeGraph3D({
           nodePos = modCenter.clone();
         } else {
           const subAngle = (nodeIdx / groupNodes.length) * Math.PI * 2;
-          const subRadius = kind === "class" ? 40 : 72 + (nodeIdx % 3) * 14;
+          const subRadius = kind === "class" ? 38 : 68 + (nodeIdx % 3) * 14;
           nodePos = new THREE.Vector3(
             modCenter.x + Math.cos(subAngle) * subRadius + (Math.random() - 0.5) * 8,
-            modCenter.y + Math.sin(subAngle) * (subRadius * 0.7) + (Math.random() - 0.5) * 12,
+            modCenter.y + Math.sin(subAngle) * (subRadius * 0.7) + (Math.random() - 0.5) * 10,
             modCenter.z + Math.sin(subAngle) * subRadius + (Math.random() - 0.5) * 8
           );
         }
@@ -242,7 +265,7 @@ export default function CodeGraph3D({
           emissive: config.hex,
           emissiveIntensity: 0.65,
           roughness: 0.2,
-          metalness: 0.8,
+          metalness: 0.85,
         });
 
         const mesh = new THREE.Mesh(sphereGeo, sphereMat);
@@ -251,12 +274,12 @@ export default function CodeGraph3D({
         scene.add(mesh);
         meshMap.set(node.id, mesh);
 
-        // Additive Outer Atmospheric Glow Halo
+        // Outer Additive Glow Halo
         const glowGeo = new THREE.SphereGeometry(radius * 1.55, 16, 16);
         const glowMat = new THREE.MeshBasicMaterial({
           color: config.glow,
           transparent: true,
-          opacity: 0.22,
+          opacity: 0.25,
           blending: THREE.AdditiveBlending,
           depthWrite: false,
         });
@@ -272,36 +295,70 @@ export default function CodeGraph3D({
       });
     });
 
+    posMapRef.current = posMap;
     nodeMeshMap.current = meshMap;
     spritesRef.current = sprites;
 
-    // 8. 3D Curved Arc Edges with Glowing Flow
-    edges.forEach((edge) => {
+    // 8. 3D Curved Arc Edges with Moving Energy Particles
+    const curves: THREE.QuadraticBezierCurve3[] = [];
+    const particlePositions: Float32Array = new Float32Array(edges.length * 3);
+
+    edges.forEach((edge, idx) => {
       const p1 = posMap.get(edge.source);
       const p2 = posMap.get(edge.target);
       if (!p1 || !p2) return;
 
-      // Create elegant curved arc
       const mid = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5);
       const dist = p1.distanceTo(p2);
       mid.y += Math.min(dist * 0.2, 40);
 
       const curve = new THREE.QuadraticBezierCurve3(p1, mid, p2);
+      curves.push(curve);
+
       const curvePoints = curve.getPoints(24);
       const lineGeo = new THREE.BufferGeometry().setFromPoints(curvePoints);
-
       const lineMat = new THREE.LineBasicMaterial({
         color: 0x58a6ff,
         transparent: true,
         opacity: 0.35,
         blending: THREE.AdditiveBlending,
       });
-
       const line = new THREE.Line(lineGeo, lineMat);
       scene.add(line);
+
+      // Initial particle position
+      const p = curve.getPoint(0);
+      particlePositions[idx * 3] = p.x;
+      particlePositions[idx * 3 + 1] = p.y;
+      particlePositions[idx * 3 + 2] = p.z;
     });
 
-    // 9. Raycasting (Hover & Click)
+    // Particle System traveling on curves
+    const particleGeo = new THREE.BufferGeometry();
+    particleGeo.setAttribute("position", new THREE.BufferAttribute(particlePositions, 3));
+    const particleMat = new THREE.PointsMaterial({
+      color: 0x58a6ff,
+      size: 4,
+      transparent: true,
+      opacity: 0.9,
+      blending: THREE.AdditiveBlending,
+    });
+    const particleSystem = new THREE.Points(particleGeo, particleMat);
+    scene.add(particleSystem);
+
+    // 9. Animated Selection Halo Mesh
+    const selRingGeo = new THREE.TorusGeometry(12, 0.8, 16, 32);
+    const selRingMat = new THREE.MeshBasicMaterial({
+      color: 0x58a6ff,
+      transparent: true,
+      opacity: 0.8,
+    });
+    const selRingMesh = new THREE.Mesh(selRingGeo, selRingMat);
+    selRingMesh.visible = false;
+    scene.add(selRingMesh);
+    selectionRingRef.current = selRingMesh;
+
+    // 10. Raycasting
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
 
@@ -336,13 +393,18 @@ export default function CodeGraph3D({
       if (intersects.length > 0) {
         const hitData = intersects[0].object.userData as NodeData;
         onNodeSelect(hitData);
+
+        // Position selection ring
+        const targetMesh = intersects[0].object as THREE.Mesh;
+        selRingMesh.position.copy(targetMesh.position);
+        selRingMesh.visible = true;
       }
     };
 
     renderer.domElement.addEventListener("mousemove", handlePointerMove);
     renderer.domElement.addEventListener("click", handleClick);
 
-    // 10. Resize
+    // 11. Resize
     const handleResize = () => {
       if (!containerRef.current) return;
       const w = containerRef.current.clientWidth;
@@ -353,12 +415,34 @@ export default function CodeGraph3D({
     };
     window.addEventListener("resize", handleResize);
 
-    // 11. Animation Loop with Star Rotation
+    // 12. Animation Loop with Particle Flow
     let animationFrameId: number;
+    let progress = 0;
+
     const animate = () => {
       animationFrameId = requestAnimationFrame(animate);
-      starsWhite.rotation.y += 0.0001;
-      starsBlue.rotation.y -= 0.00015;
+
+      // Rotate starfields
+      stars1.rotation.y += 0.0001;
+      stars2.rotation.y -= 0.00015;
+
+      // Animate energy particles along curves
+      const speed = particleSpeed === "fast" ? 0.008 : particleSpeed === "slow" ? 0.002 : 0.005;
+      progress = (progress + speed) % 1;
+
+      const posAttr = particleGeo.getAttribute("position") as THREE.BufferAttribute;
+      curves.forEach((c, i) => {
+        const pt = c.getPoint(progress);
+        posAttr.setXYZ(i, pt.x, pt.y, pt.z);
+      });
+      posAttr.needsUpdate = true;
+
+      // Spin selection ring
+      if (selRingMesh.visible) {
+        selRingMesh.rotation.x += 0.02;
+        selRingMesh.rotation.y += 0.03;
+      }
+
       controls.update();
       renderer.render(scene, camera);
     };
@@ -370,11 +454,11 @@ export default function CodeGraph3D({
       renderer.domElement.removeEventListener("mousemove", handlePointerMove);
       renderer.domElement.removeEventListener("click", handleClick);
       renderer.dispose();
-      starsWhite.geometry.dispose();
-      starsBlue.geometry.dispose();
-      starsAmber.geometry.dispose();
+      stars1.geometry.dispose();
+      stars2.geometry.dispose();
+      stars3.geometry.dispose();
     };
-  }, [nodes, edges, onNodeSelect]);
+  }, [nodes, edges, onNodeSelect, particleSpeed]);
 
   // Handle Auto-Rotate toggle
   useEffect(() => {
@@ -390,11 +474,47 @@ export default function CodeGraph3D({
     });
   }, [showLabels]);
 
-  const handleResetCamera = () => {
-    if (cameraRef.current && controlsRef.current) {
-      cameraRef.current.position.set(0, 140, 460);
+  // Camera Presets
+  const applyCameraPreset = (preset: "orbit" | "birdseye" | "core") => {
+    setCameraPreset(preset);
+    if (!cameraRef.current || !controlsRef.current) return;
+
+    if (preset === "orbit") {
+      cameraRef.current.position.set(0, 150, 480);
       controlsRef.current.target.set(0, 0, 0);
-      controlsRef.current.update();
+    } else if (preset === "birdseye") {
+      cameraRef.current.position.set(0, 560, 0);
+      controlsRef.current.target.set(0, 0, 0);
+    } else if (preset === "core") {
+      cameraRef.current.position.set(0, 40, 220);
+      controlsRef.current.target.set(0, 0, 0);
+    }
+    controlsRef.current.update();
+  };
+
+  // Fly-to Searched Node in 3D
+  const handleSearchFlyTo = (query: string) => {
+    setSearchQuery(query);
+    if (!query.trim() || !cameraRef.current || !controlsRef.current) return;
+
+    const q = query.toLowerCase();
+    const matchedNode = nodes.find(
+      (n) => n.data.label.toLowerCase().includes(q) || n.data.file_path?.toLowerCase().includes(q)
+    );
+
+    if (matchedNode) {
+      const pos = posMapRef.current.get(matchedNode.id);
+      if (pos) {
+        controlsRef.current.target.copy(pos);
+        cameraRef.current.position.set(pos.x + 40, pos.y + 30, pos.z + 80);
+        controlsRef.current.update();
+        onNodeSelect(matchedNode.data);
+
+        if (selectionRingRef.current) {
+          selectionRingRef.current.position.copy(pos);
+          selectionRingRef.current.visible = true;
+        }
+      }
     }
   };
 
@@ -412,91 +532,141 @@ export default function CodeGraph3D({
       <div ref={containerRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
 
       {/* ===================================================================== */}
-      {/* FLOATING 3D GLASS HUD CARD (Top Left - Exactly matches mockup) */}
+      {/* 3D COSMOS TOP BAR: SEARCH & FLY-TO + CAMERA PRESETS */}
       {/* ===================================================================== */}
-      <div className="absolute top-4 left-4 z-20 w-64 rounded-xl bg-[#0a0a0a]/80 backdrop-blur-xl border border-[#222222] p-3.5 font-mono text-xs shadow-2xl space-y-3">
-        {/* Title and Subtitle */}
-        <div>
-          <h3 className="text-xs font-bold text-[#f0f6fc] tracking-tight flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-[#58a6ff]" />
-            3D Cosmos Engine
-          </h3>
-          <p className="text-[10px] text-[#8b949e] mt-0.5">3D cosmos knowledge graph</p>
-        </div>
+      <div className="absolute top-4 left-4 z-20 flex items-center gap-3">
+        {/* Floating 3D HUD Card */}
+        <div className="w-64 rounded-xl bg-[#0a0a0a]/85 backdrop-blur-xl border border-[#222222] p-3.5 font-mono text-xs shadow-2xl space-y-3">
+          {/* Header */}
+          <div>
+            <h3 className="text-xs font-bold text-[#f0f6fc] tracking-tight flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-[#58a6ff]" />
+              3D Cosmos Engine
+            </h3>
+            <p className="text-[10px] text-[#8b949e] mt-0.5">3D cosmos knowledge graph</p>
+          </div>
 
-        <div className="h-[1px] bg-[#1f1f1f]" />
+          <div className="h-[1px] bg-[#1f1f1f]" />
 
-        {/* Auto-Orbit Toggle Switch */}
-        <div className="flex items-center justify-between">
-          <span className="text-[11px] text-[#c9d1d9] flex items-center gap-1.5">
-            <Compass className="w-3.5 h-3.5 text-[#8b949e]" />
-            Auto-Orbit
-          </span>
-          <button
-            onClick={() => setAutoRotate(!autoRotate)}
-            className={`w-9 h-5 rounded-full transition-colors relative flex items-center p-0.5 ${
-              autoRotate ? "bg-[#1f6feb]" : "bg-[#21262d]"
-            }`}
-          >
-            <div
-              className={`w-4 h-4 rounded-full bg-white transition-transform ${
-                autoRotate ? "translate-x-4" : "translate-x-0"
-              }`}
+          {/* 3D Search & Fly-To */}
+          <div className="relative">
+            <Search className="w-3 h-3 absolute left-2.5 top-1/2 -translate-y-1/2 text-[#8b949e]" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => handleSearchFlyTo(e.target.value)}
+              placeholder="3D Search & Fly To..."
+              className="w-full pl-7 pr-2 py-1 rounded bg-[#161616] border border-[#27272a] text-[11px] text-[#f0f6fc] placeholder-[#52525b] focus:outline-none focus:border-[#58a6ff]"
             />
-          </button>
-        </div>
+          </div>
 
-        {/* 3D Labels Toggle Switch */}
-        <div className="flex items-center justify-between">
-          <span className="text-[11px] text-[#c9d1d9] flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-[#8b949e]" />
-            3D Labels
-          </span>
-          <button
-            onClick={() => setShowLabels(!showLabels)}
-            className={`w-9 h-5 rounded-full transition-colors relative flex items-center p-0.5 ${
-              showLabels ? "bg-[#1f6feb]" : "bg-[#21262d]"
-            }`}
-          >
-            <div
-              className={`w-4 h-4 rounded-full bg-white transition-transform ${
-                showLabels ? "translate-x-4" : "translate-x-0"
+          {/* Auto-Orbit Toggle Switch */}
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] text-[#c9d1d9] flex items-center gap-1.5">
+              <Compass className="w-3.5 h-3.5 text-[#8b949e]" />
+              Auto-Orbit
+            </span>
+            <button
+              onClick={() => setAutoRotate(!autoRotate)}
+              className={`w-9 h-5 rounded-full transition-colors relative flex items-center p-0.5 ${
+                autoRotate ? "bg-[#1f6feb]" : "bg-[#21262d]"
               }`}
-            />
-          </button>
-        </div>
-
-        {/* Zoom Stepper Control */}
-        <div className="flex items-center justify-between pt-1">
-          <span className="text-[11px] text-[#c9d1d9]">Zoom</span>
-          <div className="flex items-center bg-[#161616] border border-[#27272a] rounded-md overflow-hidden">
-            <button
-              onClick={() => handleZoom("out")}
-              className="px-2 py-1 text-[#8b949e] hover:text-[#f0f6fc] hover:bg-[#222222] transition"
-              title="Zoom Out"
             >
-              <Minus className="w-3 h-3" />
-            </button>
-            <button
-              onClick={handleResetCamera}
-              className="px-2 py-1 text-[#8b949e] hover:text-[#f0f6fc] hover:bg-[#222222] border-x border-[#27272a] transition text-[10px]"
-              title="Reset View"
-            >
-              <RotateCcw className="w-2.5 h-2.5" />
-            </button>
-            <button
-              onClick={() => handleZoom("in")}
-              className="px-2 py-1 text-[#8b949e] hover:text-[#f0f6fc] hover:bg-[#222222] transition"
-              title="Zoom In"
-            >
-              <Plus className="w-3 h-3" />
+              <div
+                className={`w-4 h-4 rounded-full bg-white transition-transform ${
+                  autoRotate ? "translate-x-4" : "translate-x-0"
+                }`}
+              />
             </button>
           </div>
+
+          {/* 3D Labels Toggle Switch */}
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] text-[#c9d1d9] flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-[#8b949e]" />
+              3D Labels
+            </span>
+            <button
+              onClick={() => setShowLabels(!showLabels)}
+              className={`w-9 h-5 rounded-full transition-colors relative flex items-center p-0.5 ${
+                showLabels ? "bg-[#1f6feb]" : "bg-[#21262d]"
+              }`}
+            >
+              <div
+                className={`w-4 h-4 rounded-full bg-white transition-transform ${
+                  showLabels ? "translate-x-4" : "translate-x-0"
+                }`}
+              />
+            </button>
+          </div>
+
+          {/* Zoom Stepper Control */}
+          <div className="flex items-center justify-between pt-1">
+            <span className="text-[11px] text-[#c9d1d9]">Zoom</span>
+            <div className="flex items-center bg-[#161616] border border-[#27272a] rounded-md overflow-hidden">
+              <button
+                onClick={() => handleZoom("out")}
+                className="px-2 py-1 text-[#8b949e] hover:text-[#f0f6fc] hover:bg-[#222222] transition"
+                title="Zoom Out"
+              >
+                <Minus className="w-3 h-3" />
+              </button>
+              <button
+                onClick={() => applyCameraPreset("orbit")}
+                className="px-2 py-1 text-[#8b949e] hover:text-[#f0f6fc] hover:bg-[#222222] border-x border-[#27272a] transition text-[10px]"
+                title="Reset View"
+              >
+                <RotateCcw className="w-2.5 h-2.5" />
+              </button>
+              <button
+                onClick={() => handleZoom("in")}
+                className="px-2 py-1 text-[#8b949e] hover:text-[#f0f6fc] hover:bg-[#222222] transition"
+                title="Zoom In"
+              >
+                <Plus className="w-3 h-3" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Camera Presets Selector */}
+        <div className="flex items-center gap-1 bg-[#0a0a0a]/85 backdrop-blur-xl border border-[#222222] p-1.5 rounded-lg font-mono text-xs shadow-2xl">
+          <span className="text-[10px] text-[#8b949e] px-1.5 uppercase font-bold">Preset:</span>
+          <button
+            onClick={() => applyCameraPreset("orbit")}
+            className={`px-2.5 py-1 rounded text-[11px] transition ${
+              cameraPreset === "orbit"
+                ? "bg-[#161616] text-[#58a6ff] border border-[#27272a] font-semibold"
+                : "text-[#8b949e] hover:text-[#c9d1d9]"
+            }`}
+          >
+            Constellation
+          </button>
+          <button
+            onClick={() => applyCameraPreset("birdseye")}
+            className={`px-2.5 py-1 rounded text-[11px] transition ${
+              cameraPreset === "birdseye"
+                ? "bg-[#161616] text-[#58a6ff] border border-[#27272a] font-semibold"
+                : "text-[#8b949e] hover:text-[#c9d1d9]"
+            }`}
+          >
+            Birdseye
+          </button>
+          <button
+            onClick={() => applyCameraPreset("core")}
+            className={`px-2.5 py-1 rounded text-[11px] transition ${
+              cameraPreset === "core"
+                ? "bg-[#161616] text-[#58a6ff] border border-[#27272a] font-semibold"
+                : "text-[#8b949e] hover:text-[#c9d1d9]"
+            }`}
+          >
+            Core Focus
+          </button>
         </div>
       </div>
 
       {/* ===================================================================== */}
-      {/* FLOATING 3D TELEMETRY PILL (Bottom Center - Exactly matches mockup) */}
+      {/* FLOATING 3D TELEMETRY PILL (Bottom Center) */}
       {/* ===================================================================== */}
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-3 bg-[#0a0a0a]/85 backdrop-blur-xl border border-[#222222] px-4 py-2 rounded-full font-mono text-[11px] shadow-2xl">
         <div className="flex items-center gap-2">
@@ -522,7 +692,7 @@ export default function CodeGraph3D({
 
       {/* Hovered Node Floating Tooltip */}
       {hoveredNode && (
-        <div className="absolute top-4 right-4 z-20 bg-[#0a0a0a]/95 backdrop-blur-md border border-[#27272a] p-3 rounded-lg font-mono text-xs text-white shadow-2xl pointer-events-none max-w-xs animate-in fade-in duration-100">
+        <div className="absolute top-4 right-4 z-20 bg-[#0a0a0a]/95 backdrop-blur-md border border-[#27272a] p-3 rounded-lg font-mono text-xs text-white shadow-2xl pointer-events-none max-w-sm animate-in fade-in duration-100">
           <div className="flex items-center justify-between gap-2 border-b border-[#1f1f1f] pb-1.5 mb-1.5">
             <div className="flex items-center gap-2">
               <span
