@@ -70,6 +70,8 @@ const nodeTypes = {
   customCodeNode: CustomCodeNode,
 };
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
 const DEMO_REPOSITORIES = [
   { name: "FastAPI", url: "https://github.com/fastapi/fastapi" },
   { name: "Flask", url: "https://github.com/pallets/flask" },
@@ -190,7 +192,7 @@ export default function App() {
 
   // Check LLM status on mount
   useEffect(() => {
-    fetch("http://localhost:8000/status")
+    fetch(`${API_BASE}/status`)
       .then((res) => res.json())
       .then((data) => {
         if (data.active_model) {
@@ -251,7 +253,7 @@ export default function App() {
       try {
         const fetchLayout = layout === "3d" ? "radial" : layout;
         const res = await fetch(
-          `http://localhost:8000/graph?github_url=${encodeURIComponent(url)}&layout=${fetchLayout}`
+          `${API_BASE}/graph?github_url=${encodeURIComponent(url)}&layout=${fetchLayout}`
         );
         if (res.ok) {
           const data = await res.json();
@@ -271,7 +273,7 @@ export default function App() {
     if (!urlToIngest.trim()) return;
     setIsIngesting(true);
     try {
-      const res = await fetch("http://localhost:8000/ingest", {
+      const res = await fetch(`${API_BASE}/ingest`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ github_url: urlToIngest }),
@@ -318,7 +320,7 @@ export default function App() {
         content: m.content,
       }));
 
-      const res = await fetch("http://localhost:8000/ask", {
+      const res = await fetch(`${API_BASE}/ask`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -357,7 +359,7 @@ export default function App() {
     setIsEvaluating(true);
     setActiveRightTab("benchmark");
     try {
-      const res = await fetch(`http://localhost:8000/evaluate?github_url=${encodeURIComponent(githubUrl)}`);
+      const res = await fetch(`${API_BASE}/evaluate?github_url=${encodeURIComponent(githubUrl)}`);
       const data = await res.json();
       setEvalResult(data);
     } catch (err) {
