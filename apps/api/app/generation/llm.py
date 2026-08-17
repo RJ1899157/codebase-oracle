@@ -23,14 +23,11 @@ CRITICAL ARCHITECTURAL GUIDELINES:
 4. Be precise, accurate, and avoid making up non-existent files or functions.
 """
 
-GROQ_MODELS = [
+STABLE_GROQ_MODELS = [
     "llama-3.3-70b-versatile",
     "llama-3.1-8b-instant",
-    "llama-3.3-70b-specdec",
-    "llama-3.2-11b-vision-preview",
-    "llama-3.2-3b-preview",
-    "llama-3.2-1b-preview",
-    "qwen-2.5-32b",
+    "deepseek-r1-distill-llama-70b",
+    "gemma2-9b-it",
 ]
 
 GEMINI_MODELS = [
@@ -41,10 +38,31 @@ GEMINI_MODELS = [
 ]
 
 
+def get_active_groq_models(api_key: str) -> list[str]:
+    """Dynamically queries Groq's live model list to guarantee only active, non-decommissioned models are used."""
+    url = "https://api.groq.com/openai/v1/models"
+    headers = {
+        "Authorization": f"Bearer {api_key.strip()}",
+        "User-Agent": "CodebaseOracle/1.0",
+    }
+    req = urllib.request.Request(url, headers=headers)
+    try:
+        with urllib.request.urlopen(req, timeout=4) as response:
+            res = json.loads(response.read().decode("utf-8"))
+            live_models = {m["id"] for m in res.get("data", []) if m.get("active", True)}
+            # Keep verified stable models that are currently active
+            filtered = [m for m in STABLE_GROQ_MODELS if m in live_models]
+            return filtered or STABLE_GROQ_MODELS
+    except Exception:
+        return STABLE_GROQ_MODELS
+
+
 def call_groq(prompt: str, api_key: str, model_name: str | None = None, history: list[ChatMessage] | None = None) -> str:
     url = "https://api.groq.com/openai/v1/chat/completions"
-    models_to_try = [model_name] if model_name else []
-    models_to_try.extend([m for m in GROQ_MODELS if m != model_name])
+    active_models = get_active_groq_models(api_key)
+
+    models_to_try = [model_name] if model_name and model_name in active_models else []
+    models_to_try.extend([m for m in active_models if m not in models_to_try])
 
     messages = [{"role": "system", "content": SYSTEM_PROMPT}]
     if history:
