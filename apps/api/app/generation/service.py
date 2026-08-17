@@ -58,12 +58,33 @@ def generate_answer(
     else:
         llm_output, error_msg = str(res), None
 
-    if llm_output.startswith("REFUSAL:"):
+    REFUSAL_PHRASES = (
+        "refusal:",
+        "does not contain",
+        "not found in the provided",
+        "not mentioned in the provided",
+        "no mention of",
+        "no evidence of",
+        "insufficient context",
+        "cannot answer based on the provided",
+        "not present in the repository",
+        "unrelated to this repository",
+        "not defined in the provided",
+        "no implementation of",
+        "there is no information about",
+        "is not part of",
+    )
+
+    llm_lower = llm_output.strip().lower()
+    is_refusal = any(phrase in llm_lower for phrase in REFUSAL_PHRASES)
+
+    if is_refusal:
+        reason_text = llm_output.replace("REFUSAL:", "").strip() if llm_output.startswith("REFUSAL:") else "insufficient_context"
         return AnswerResult(
-            answer="",
-            citations=citations,
+            answer="REFUSAL: Insufficient context in repository to answer this question.",
+            citations=[],
             refused=True,
-            reason=llm_output.replace("REFUSAL:", "").strip() or "insufficient_context",
+            reason=reason_text or "insufficient_context",
         )
 
     if not llm_output:

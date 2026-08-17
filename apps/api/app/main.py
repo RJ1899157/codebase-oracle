@@ -223,8 +223,8 @@ def evaluate(github_url: str = Query(..., description="The GitHub repository URL
     if not repo_data:
         try:
             repo_data = ingest_github_repo(github_url)
-        except Exception as e:
-            raise HTTPException(status_code=400, detail=f"Failed to ingest repository '{github_url}': {str(e)}")
+        except Exception:
+            raise HTTPException(status_code=404, detail=f"Repository '{github_url}' not ingested yet.")
 
     benchmark_cases = _build_dynamic_eval_cases(repo_data)
 
