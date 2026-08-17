@@ -307,6 +307,14 @@ export default function App() {
     const query = promptOverride || inputQuery;
     if (!query.trim() || isAsking) return;
 
+    const targetUrl = githubUrl || "https://github.com/fastapi/fastapi";
+    if (!githubUrl) setGithubUrl(targetUrl);
+
+    // If graph is unpopulated, trigger background ingest
+    if (!allNodes || allNodes.length === 0) {
+      handleIngest(targetUrl);
+    }
+
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
       role: "user",

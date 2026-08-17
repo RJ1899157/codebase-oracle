@@ -102,6 +102,12 @@ def ingest(request: IngestRequest) -> dict:
 @app.post("/ask")
 def ask(payload: AskPayload) -> dict:
     repo_data = global_registry.get(payload.github_url) if payload.github_url else None
+    if not repo_data and payload.github_url:
+        try:
+            repo_data = ingest_github_repo(payload.github_url)
+        except Exception:
+            pass
+
     chunks = repo_data.chunks if repo_data else []
     batch = repo_data.batch if repo_data else GraphBatch(nodes=[], edges=[])
 
