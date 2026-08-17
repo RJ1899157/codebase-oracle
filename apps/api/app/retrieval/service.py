@@ -37,9 +37,14 @@ def bm25_like_score(query: str, chunk: CodeChunk) -> float:
         if f"class {token}" in lower_text or f"def {token}" in lower_text:
             score *= 4.0
 
-    # Boost non-test source code over tests
-    if "test" in chunk.file_path.lower():
-        score *= 0.5
+    # Boost entrypoints and core application files
+    lower_path = chunk.file_path.lower()
+    if any(lower_path.endswith(ep) for ep in ["main.py", "applications.py", "routing.py", "app.py", "server.py", "index.ts", "index.js", "mod.rs", "lib.rs", "__init__.py"]):
+        score *= 3.0
+
+    # Downweight tests and fixtures
+    if "test" in lower_path or "fixture" in lower_path:
+        score *= 0.15
     else:
         score *= 1.8
 
@@ -78,8 +83,10 @@ def graph_candidates(query: str, batch: GraphBatch, chunks: list[CodeChunk] | No
             score = 2.5 * len(matched_tokens)
             if any(t == node_name_lower for t in query_tokens):
                 score += 6.0
-            if "test" not in node.file_path.lower():
-                score += 2.0
+            if "test" in node.file_path.lower() or "fixture" in node.file_path.lower():
+                score *= 0.15
+            else:
+                score += 3.0
 
             # Find matching real code chunk
             resolved_chunk: CodeChunk | None = None
@@ -134,7 +141,10 @@ def hybrid_retrieve(query: str, chunks: list[CodeChunk], batch: GraphBatch, top_
     top_graph = graph_results[:20]
 
     if not positive_keywords and not top_graph:
-        return []
+        # Fallback for broad architectural queries: surface top non-test entrypoint chunks
+        non_test_chunks = [c for c in chunks if "test" not in c.file_path.lower() and "fixture" not in c.file_path.lower()]
+        fallback_chunks = non_test_chunks[:top_k] if non_test_chunks else chunks[:top_k]
+        return [RetrievedChunk(chunk=c, score=0.5, source="entrypoint") for c in fallback_chunks]
 
     valid_rankings = [r for r in [positive_keywords, top_graph] if r]
     fused = reciprocal_rank_fusion(valid_rankings)
