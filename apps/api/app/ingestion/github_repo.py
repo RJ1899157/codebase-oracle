@@ -46,15 +46,40 @@ def process_repository(repo_path: Path, github_url: str) -> tuple[IngestResult, 
     return result, aggregated_batch, all_chunks
 
 
+def normalize_github_url(url: str) -> str:
+    cleaned = url.strip()
+    if not cleaned.startswith("http://") and not cleaned.startswith("https://"):
+        if cleaned.startswith("github.com/"):
+            cleaned = f"https://{cleaned}"
+        elif "/" in cleaned and not cleaned.startswith("git@"):
+            cleaned = f"https://github.com/{cleaned}"
+        else:
+            cleaned = f"https://{cleaned}"
+    # Remove trailing slashes and .git suffix
+    cleaned = cleaned.rstrip("/")
+    if cleaned.endswith(".git"):
+        cleaned = cleaned[:-4]
+    return cleaned
+
+
 def ingest_github_repo(github_url: str) -> IngestResult:
+    normalized_url = normalize_github_url(github_url)
     with TemporaryDirectory() as temp_dir_name:
         temp_dir = Path(temp_dir_name)
         repo_path = temp_dir / "repo"
-        subprocess.run(
-            ["git", "clone", "--depth", "1", github_url, str(repo_path)],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-        result, _, _ = process_repository(repo_path, github_url)
+        try:
+            subprocess.run(
+                ["git", "clone", "--depth", "1", normalized_url, str(repo_path)],
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=90,
+            )
+        except subprocess.TimeoutExpired:
+            raise RuntimeError(f"Repository clone timed out for '{normalized_url}'. Repository might be too large or network is throttled.")
+        except subprocess.CalledProcessError as e:
+            err_msg = e.stderr.strip() if e.stderr else str(e)
+            raise RuntimeError(f"Failed to clone '{normalized_url}': {err_msg}")
+
+        result, _, _ = process_repository(repo_path, normalized_url)
         return result

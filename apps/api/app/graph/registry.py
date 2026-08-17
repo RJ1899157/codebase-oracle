@@ -86,7 +86,13 @@ class RepositoryRegistry:
 
                 nodes_in_file = file_map[file_path]
                 file_node = next((n for n in nodes_in_file if n.kind == "file"), None)
-                child_symbols = [n for n in nodes_in_file if n.kind != "file"]
+                # Filter to only genuine architectural symbols (classes, interfaces, structs, functions)
+                child_symbols = [
+                    n for n in nodes_in_file
+                    if n.kind in {"class", "interface", "struct", "function"} and n.name and len(n.name) < 45
+                ]
+                # Prioritize classes/structs first, then functions
+                child_symbols.sort(key=lambda s: (0 if s.kind in {"class", "interface", "struct"} else 1, s.name))
 
                 if file_node:
                     display_nodes_set.add(file_node.id)
@@ -99,7 +105,7 @@ class RepositoryRegistry:
                             "file_path": file_node.file_path,
                             "start_line": file_node.start_line,
                             "end_line": file_node.end_line,
-                            "symbol_count": len(nodes_in_file) - 1,
+                            "symbol_count": len(child_symbols),
                         },
                         "position": {"x": round(hub_x - 90, 1), "y": round(hub_y - 30, 1)},
                     })
@@ -119,10 +125,10 @@ class RepositoryRegistry:
                     })
 
                 # Satellite Orbits for Classes and Functions
-                for child_idx, child in enumerate(child_symbols[:6]):
+                for child_idx, child in enumerate(child_symbols[:8]):
                     spread = math.pi * 0.85
-                    child_angle = angle + spread * ((child_idx - (len(child_symbols[:6]) - 1) / 2) / max(len(child_symbols[:6]), 1))
-                    satellite_dist = 220.0 if child.kind == "class" else 200.0
+                    child_angle = angle + spread * ((child_idx - (len(child_symbols[:8]) - 1) / 2) / max(len(child_symbols[:8]), 1))
+                    satellite_dist = 230.0 if child.kind in {"class", "interface", "struct"} else 210.0
                     cx = hub_x + satellite_dist * math.cos(child_angle)
                     cy = hub_y + satellite_dist * math.sin(child_angle)
 
@@ -208,22 +214,7 @@ class RepositoryRegistry:
                     })
                     current_row += 1
 
-                # Dependencies
-                for dep in dependencies[:2]:
-                    display_nodes_set.add(dep.id)
-                    nodes_list.append({
-                        "id": dep.id,
-                        "type": "customCodeNode",
-                        "data": {
-                            "label": dep.name,
-                            "kind": dep.kind,
-                            "file_path": dep.file_path,
-                            "start_line": dep.start_line,
-                            "end_line": dep.end_line,
-                        },
-                        "position": {"x": x_pos, "y": current_row * row_spacing + 60},
-                    })
-                    current_row += 1
+                # Only display files, classes, interfaces, structs, and functions
 
         # Glowing Edge Connectors
         for idx, edge in enumerate(repo.batch.edges):

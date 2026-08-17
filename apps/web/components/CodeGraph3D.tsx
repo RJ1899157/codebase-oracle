@@ -148,7 +148,7 @@ export default function CodeGraph3D({
     isGlidingRef.current = true;
   }, []);
 
-  // Setup Three.js Scene
+  // Setup High-Performance Three.js Scene
   useEffect(() => {
     if (!containerRef.current) return;
     const container = containerRef.current;
@@ -166,10 +166,10 @@ export default function CodeGraph3D({
     camera.position.set(0, 150, 480);
     cameraRef.current = camera;
 
-    // 3. Renderer
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    // 3. Renderer with power-preference and clamped pixel ratio
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
     renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.25;
     container.innerHTML = "";
@@ -191,14 +191,14 @@ export default function CodeGraph3D({
     });
 
     // 5. Lights
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
     scene.add(ambientLight);
 
-    const cyanLight = new THREE.PointLight(0x58a6ff, 2.2, 1600);
+    const cyanLight = new THREE.PointLight(0x58a6ff, 2.0, 1600);
     cyanLight.position.set(250, 350, 300);
     scene.add(cyanLight);
 
-    const amberLight = new THREE.PointLight(0xd29922, 1.8, 1600);
+    const amberLight = new THREE.PointLight(0xd29922, 1.6, 1600);
     amberLight.position.set(-250, -200, -250);
     scene.add(amberLight);
 
@@ -222,14 +222,40 @@ export default function CodeGraph3D({
       return new THREE.Points(geo, mat);
     };
 
-    const stars1 = createStarLayer(1000, 2.0, 0xd0e8ff, 2500);
-    const stars2 = createStarLayer(600, 3.0, 0x58a6ff, 1800);
-    const stars3 = createStarLayer(300, 2.5, 0xd29922, 1500);
+    const stars1 = createStarLayer(800, 2.0, 0xd0e8ff, 2500);
+    const stars2 = createStarLayer(400, 3.0, 0x58a6ff, 1800);
     scene.add(stars1);
     scene.add(stars2);
-    scene.add(stars3);
 
-    // 7. Calculate 3D Orbital Positions
+    // 7. Shared Geometries and Materials for 60fps performance
+    const moduleGeo = new THREE.SphereGeometry(9, 24, 24);
+    const classGeo = new THREE.SphereGeometry(6.5, 20, 20);
+    const functionGeo = new THREE.SphereGeometry(4.5, 16, 16);
+    const defaultGeo = new THREE.SphereGeometry(4.0, 14, 14);
+    const hitGeo = new THREE.SphereGeometry(18, 8, 8);
+    const hitMat = new THREE.MeshBasicMaterial({ visible: false });
+
+    const sharedMaterials: Record<string, { sphereMat: THREE.MeshStandardMaterial; glowMat: THREE.MeshBasicMaterial }> = {};
+    Object.entries(KIND_COLORS).forEach(([kind, conf]) => {
+      sharedMaterials[kind] = {
+        sphereMat: new THREE.MeshStandardMaterial({
+          color: conf.hex,
+          emissive: conf.hex,
+          emissiveIntensity: 0.65,
+          roughness: 0.2,
+          metalness: 0.85,
+        }),
+        glowMat: new THREE.MeshBasicMaterial({
+          color: conf.glow,
+          transparent: true,
+          opacity: 0.25,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+        }),
+      };
+    });
+
+    // 8. Calculate 3D Orbital Positions
     const posMap = new Map<string, THREE.Vector3>();
     const hitMeshes: THREE.Mesh[] = [];
     const sprites: THREE.Sprite[] = [];
@@ -254,7 +280,7 @@ export default function CodeGraph3D({
       );
 
       // Subsystem Ring Loop
-      const ringGeo = new THREE.RingGeometry(65, 66, 48);
+      const ringGeo = new THREE.RingGeometry(65, 66, 32);
       const ringMat = new THREE.MeshBasicMaterial({
         color: 0x3fb950,
         side: THREE.DoubleSide,
@@ -277,46 +303,30 @@ export default function CodeGraph3D({
           const subAngle = (nodeIdx / groupNodes.length) * Math.PI * 2;
           const subRadius = kind === "class" ? 38 : 68 + (nodeIdx % 3) * 14;
           nodePos = new THREE.Vector3(
-            modCenter.x + Math.cos(subAngle) * subRadius + (Math.random() - 0.5) * 8,
-            modCenter.y + Math.sin(subAngle) * (subRadius * 0.7) + (Math.random() - 0.5) * 10,
-            modCenter.z + Math.sin(subAngle) * subRadius + (Math.random() - 0.5) * 8
+            modCenter.x + Math.cos(subAngle) * subRadius,
+            modCenter.y + Math.sin(subAngle) * (subRadius * 0.7),
+            modCenter.z + Math.sin(subAngle) * subRadius
           );
         }
 
         posMap.set(node.id, nodePos);
 
         const config = KIND_COLORS[kind] || { hex: 0x8b949e, str: "#8b949e", label: "SYMBOL", glow: 0x8b949e };
-        const radius = kind === "file" || kind === "module" ? 9 : kind === "class" ? 6.5 : 4.5;
+        const geo = kind === "file" || kind === "module" ? moduleGeo : kind === "class" ? classGeo : kind === "function" ? functionGeo : defaultGeo;
+        const mats = sharedMaterials[kind] || sharedMaterials["function"];
 
-        // Core Glowing Celestial Sphere
-        const sphereGeo = new THREE.SphereGeometry(radius, 32, 32);
-        const sphereMat = new THREE.MeshStandardMaterial({
-          color: config.hex,
-          emissive: config.hex,
-          emissiveIntensity: 0.65,
-          roughness: 0.2,
-          metalness: 0.85,
-        });
-
-        const mesh = new THREE.Mesh(sphereGeo, sphereMat);
+        // Core Sphere
+        const mesh = new THREE.Mesh(geo, mats.sphereMat);
         mesh.position.copy(nodePos);
         scene.add(mesh);
 
-        // Outer Additive Glow Halo
-        const glowGeo = new THREE.SphereGeometry(radius * 1.55, 16, 16);
-        const glowMat = new THREE.MeshBasicMaterial({
-          color: config.glow,
-          transparent: true,
-          opacity: 0.25,
-          blending: THREE.AdditiveBlending,
-          depthWrite: false,
-        });
-        const glowMesh = new THREE.Mesh(glowGeo, glowMat);
+        // Outer Glow Halo
+        const glowRadius = (kind === "file" || kind === "module" ? 9 : kind === "class" ? 6.5 : 4.5) * 1.55;
+        const glowGeo = new THREE.SphereGeometry(glowRadius, 12, 12);
+        const glowMesh = new THREE.Mesh(glowGeo, mats.glowMat);
         mesh.add(glowMesh);
 
-        // Invisible Large Hit Sphere (18px radius)
-        const hitGeo = new THREE.SphereGeometry(18, 12, 12);
-        const hitMat = new THREE.MeshBasicMaterial({ visible: false });
+        // Invisible Fast Hit Sphere
         const hitMesh = new THREE.Mesh(hitGeo, hitMat);
         hitMesh.position.copy(nodePos);
         hitMesh.userData = { ...node.data, id: node.id };
@@ -325,7 +335,7 @@ export default function CodeGraph3D({
 
         // 3D Text Sprite Billboard
         const sprite = createTextSprite(node.data.label, config.str);
-        sprite.position.set(nodePos.x, nodePos.y + radius + 8, nodePos.z);
+        sprite.position.set(nodePos.x, nodePos.y + glowRadius + 6, nodePos.z);
         sprite.visible = showLabels;
         scene.add(sprite);
         sprites.push(sprite);
@@ -336,8 +346,9 @@ export default function CodeGraph3D({
     hitMeshesRef.current = hitMeshes;
     spritesRef.current = sprites;
 
-    // 8. 3D Curved Arc Edges with Moving Energy Particles
-    const curves: THREE.QuadraticBezierCurve3[] = [];
+    // 9. Pre-Sampled 3D Curved Arc Edges with Instant Lookup
+    const CURVE_SAMPLES = 40;
+    const sampledCurves: THREE.Vector3[][] = [];
     const particlePositions: Float32Array = new Float32Array(edges.length * 3);
 
     edges.forEach((edge, idx) => {
@@ -350,9 +361,9 @@ export default function CodeGraph3D({
       mid.y += Math.min(dist * 0.2, 40);
 
       const curve = new THREE.QuadraticBezierCurve3(p1, mid, p2);
-      curves.push(curve);
+      const curvePoints = curve.getPoints(20);
+      sampledCurves.push(curve.getPoints(CURVE_SAMPLES));
 
-      const curvePoints = curve.getPoints(24);
       const lineGeo = new THREE.BufferGeometry().setFromPoints(curvePoints);
       const lineMat = new THREE.LineBasicMaterial({
         color: 0x58a6ff,
@@ -363,13 +374,13 @@ export default function CodeGraph3D({
       const line = new THREE.Line(lineGeo, lineMat);
       scene.add(line);
 
-      const p = curve.getPoint(0);
+      const p = curvePoints[0];
       particlePositions[idx * 3] = p.x;
       particlePositions[idx * 3 + 1] = p.y;
       particlePositions[idx * 3 + 2] = p.z;
     });
 
-    // Particle System
+    // Fast Particle System
     const particleGeo = new THREE.BufferGeometry();
     particleGeo.setAttribute("position", new THREE.BufferAttribute(particlePositions, 3));
     const particleMat = new THREE.PointsMaterial({
@@ -382,7 +393,7 @@ export default function CodeGraph3D({
     const particleSystem = new THREE.Points(particleGeo, particleMat);
     scene.add(particleSystem);
 
-    // 9. Animated Selection Halo Mesh
+    // 10. Animated Selection Halo Mesh
     const selRingGeo = new THREE.TorusGeometry(14, 1.0, 16, 32);
     const selRingMat = new THREE.MeshBasicMaterial({
       color: 0x58a6ff,
@@ -394,10 +405,11 @@ export default function CodeGraph3D({
     scene.add(selRingMesh);
     selectionRingRef.current = selRingMesh;
 
-    // 10. Robust Pointer-based Raycasting
+    // 11. Throttled Pointer-based Raycasting (Zero Lag)
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
     let pointerDownPos = { x: 0, y: 0 };
+    let currentHoveredId: string | null = null;
 
     const getRaycastHit = (clientX: number, clientY: number) => {
       const rect = renderer.domElement.getBoundingClientRect();
@@ -415,25 +427,29 @@ export default function CodeGraph3D({
 
     const handlePointerMove = (e: PointerEvent) => {
       const hitData = getRaycastHit(e.clientX, e.clientY);
-      if (hitData) {
-        container.style.cursor = "pointer";
-        setHoveredNode(hitData);
-      } else {
-        container.style.cursor = "grab";
-        setHoveredNode(null);
+      const hitId = hitData ? (hitData as any).id : null;
+
+      if (hitId !== currentHoveredId) {
+        currentHoveredId = hitId;
+        if (hitData) {
+          container.style.cursor = "pointer";
+          setHoveredNode(hitData);
+        } else {
+          container.style.cursor = "grab";
+          setHoveredNode(null);
+        }
       }
     };
 
     const handlePointerUp = (e: PointerEvent) => {
       const dist = Math.hypot(e.clientX - pointerDownPos.x, e.clientY - pointerDownPos.y);
-      if (dist > 8) return; // User was dragging/orbiting the camera
+      if (dist > 8) return; // User was dragging/orbiting
 
       const hitData = getRaycastHit(e.clientX, e.clientY);
       if (hitData) {
         onNodeSelect(hitData);
         setActiveFocusedNode(hitData);
 
-        // Smooth camera glide to focused node
         const pos = posMap.get((hitData as any).id);
         if (pos) {
           triggerGlide(
@@ -445,18 +461,18 @@ export default function CodeGraph3D({
           selRingMesh.visible = true;
         }
       } else {
-        // Clicked on empty space: deselect & restore full dynamic orbit
         if (selRingMesh.visible) {
           selRingMesh.visible = false;
         }
+        onNodeSelect(null);
+        setActiveFocusedNode(null);
       }
     };
 
     renderer.domElement.addEventListener("pointerdown", handlePointerDown);
-    renderer.domElement.addEventListener("pointermove", handlePointerMove);
+    renderer.domElement.addEventListener("pointermove", handlePointerMove, { passive: true });
     renderer.domElement.addEventListener("pointerup", handlePointerUp);
 
-    // 11. Resize
     const handleResize = () => {
       if (!containerRef.current) return;
       const w = containerRef.current.clientWidth;
@@ -467,9 +483,9 @@ export default function CodeGraph3D({
     };
     window.addEventListener("resize", handleResize);
 
-    // 12. Animation Loop
+    // 12. 60 FPS Ultra-Smooth Animation Loop
     let animationFrameId: number;
-    let progress = 0;
+    let frameStep = 0;
 
     const animate = () => {
       animationFrameId = requestAnimationFrame(animate);
@@ -477,15 +493,20 @@ export default function CodeGraph3D({
       stars1.rotation.y += 0.0001;
       stars2.rotation.y -= 0.00015;
 
-      progress = (progress + 0.005) % 1;
+      frameStep = (frameStep + 1) % CURVE_SAMPLES;
       const posAttr = particleGeo.getAttribute("position") as THREE.BufferAttribute;
-      curves.forEach((c, i) => {
-        const pt = c.getPoint(progress);
-        posAttr.setXYZ(i, pt.x, pt.y, pt.z);
-      });
-      posAttr.needsUpdate = true;
+      
+      if (sampledCurves.length > 0) {
+        for (let i = 0; i < sampledCurves.length; i++) {
+          const pt = sampledCurves[i][frameStep];
+          if (pt) {
+            posAttr.setXYZ(i, pt.x, pt.y, pt.z);
+          }
+        }
+        posAttr.needsUpdate = true;
+      }
 
-      // Smooth camera glide interpolation (completes smoothly and leaves full dynamic control to user)
+      // Smooth camera glide
       if (isGlidingRef.current) {
         const elapsed = (performance.now() - glideStartTime.current) / 650;
         if (elapsed >= 1.0) {
@@ -493,14 +514,12 @@ export default function CodeGraph3D({
           controls.target.copy(glideTargetLookAt.current);
           isGlidingRef.current = false;
         } else {
-          // Smooth easeOutCubic interpolation
           const t = 1 - Math.pow(1 - elapsed, 3);
           camera.position.lerpVectors(glideStartCamPos.current, glideTargetPos.current, t);
           controls.target.lerpVectors(glideStartTarget.current, glideTargetLookAt.current, t);
         }
       }
 
-      // Spin selection ring
       if (selRingMesh.visible) {
         selRingMesh.rotation.x += 0.02;
         selRingMesh.rotation.y += 0.03;
@@ -520,9 +539,8 @@ export default function CodeGraph3D({
       renderer.dispose();
       stars1.geometry.dispose();
       stars2.geometry.dispose();
-      stars3.geometry.dispose();
     };
-  }, [nodes, edges, onNodeSelect, triggerGlide]);
+  }, [nodes, edges, autoRotate, showLabels, onNodeSelect, triggerGlide]);
 
   // Handle Auto-Rotate toggle
   useEffect(() => {
