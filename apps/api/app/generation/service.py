@@ -6,10 +6,10 @@ from app.models import AnswerResult, ChatMessage, Citation
 from app.retrieval.service import RetrievedChunk
 
 
-def format_context_for_prompt(question: str, context: list[RetrievedChunk], max_chunks: int = 6) -> str:
+def format_context_for_prompt(question: str, context: list[RetrievedChunk], max_chunks: int = 4) -> str:
     lines = [f"QUESTION: {question}\n", "RETRIEVED CODE CONTEXT:"]
     for i, item in enumerate(context[:max_chunks], 1):
-        chunk_snippet = item.chunk.text[:1800]
+        chunk_snippet = item.chunk.text[:1200]
         lines.append(
             f"\n--- Context [{i}] from {item.chunk.file_path} (lines {item.chunk.start_line}-{item.chunk.end_line}) [Source: {item.source}] ---"
         )
