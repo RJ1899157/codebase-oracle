@@ -556,6 +556,23 @@ export default function CodeGraph3D({
     });
   }, [showLabels]);
 
+  // Focus and Glide on external node selection (e.g. from Search dropdown)
+  useEffect(() => {
+    if (selectedNodeId && posMapRef.current && cameraRef.current && controlsRef.current) {
+      const pos = posMapRef.current.get(selectedNodeId);
+      if (pos) {
+        triggerGlide(
+          new THREE.Vector3(pos.x + 40, pos.y + 30, pos.z + 85),
+          pos.clone()
+        );
+        if (selectionRingRef.current) {
+          selectionRingRef.current.position.copy(pos);
+          selectionRingRef.current.visible = true;
+        }
+      }
+    }
+  }, [selectedNodeId, triggerGlide]);
+
   // Camera Presets
   const applyCameraPreset = (preset: "orbit" | "birdseye" | "core") => {
     setCameraPreset(preset);

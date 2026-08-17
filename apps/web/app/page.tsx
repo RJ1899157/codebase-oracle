@@ -184,6 +184,9 @@ export default function App() {
   const [evalResult, setEvalResult] = useState<any | null>(null);
   const [isEvaluating, setIsEvaluating] = useState(false);
 
+  const [rfInstance, setRfInstance] = useState<any | null>(null);
+  const [isSearchDropdownOpen, setIsSearchDropdownOpen] = useState(false);
+
   const chatBottomRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll chat container to newest question and assistant response
@@ -224,6 +227,40 @@ export default function App() {
     });
     return counts;
   }, [allNodes]);
+
+  // Autocomplete matching results for interactive search
+  const searchDropdownResults = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    const q = searchQuery.toLowerCase();
+    return allNodes
+      .filter((n) => {
+        const label = (n.data as any)?.label?.toLowerCase() || "";
+        const file = (n.data as any)?.file_path?.toLowerCase() || "";
+        return label.includes(q) || file.includes(q);
+      })
+      .slice(0, 10);
+  }, [allNodes, searchQuery]);
+
+  // Smoothly focus & center node on search selection
+  const handleSelectSearchSymbol = (node: Node) => {
+    const nodeData = node.data as any;
+    setSelectedNode(nodeData);
+    setIsSearchDropdownOpen(false);
+
+    if (layoutMode !== "3d" && rfInstance && node.position) {
+      rfInstance.setCenter(node.position.x + 100, node.position.y + 40, { zoom: 1.4, duration: 800 });
+    }
+  };
+
+  // Auto-center 2D Graph on layout changes
+  useEffect(() => {
+    if (rfInstance && nodes.length > 0 && layoutMode !== "3d") {
+      const timer = setTimeout(() => {
+        rfInstance.fitView({ padding: 0.25, duration: 600 });
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [layoutMode, rfInstance, nodes.length]);
 
   const filterNodes = useCallback(
     (kind: string, query: string, rawNodes: Node[], rawEdges: Edge[]) => {
@@ -307,6 +344,9 @@ export default function App() {
     } else {
       await fetchGraphData(targetUrl, mode);
     }
+    setTimeout(() => {
+      rfInstance?.fitView({ padding: 0.25, duration: 600 });
+    }, 150);
   };
 
   const handleSendMessage = async (e?: React.FormEvent, promptOverride?: string) => {
@@ -577,20 +617,82 @@ export default function App() {
         <section className="flex-1 flex flex-col relative border-r border-[#222222] bg-[#000000]">
           {/* Graph Toolbar: Search, Kind Filter Tabs with Counts, 2D/3D Mode Switcher */}
           <div className="h-11 px-4 border-b border-[#222222] bg-[#0a0a0a] flex items-center justify-between shrink-0 z-10">
-            {/* Search Filter */}
+            {/* Interactive Graph Symbol Search with Autocomplete */}
             <div className="flex items-center gap-2">
               <div className="relative">
                 <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[#8b949e]" />
                 <input
                   type="text"
                   value={searchQuery}
+                  onFocus={() => setIsSearchDropdownOpen(true)}
                   onChange={(e) => {
                     setSearchQuery(e.target.value);
+                    setIsSearchDropdownOpen(true);
                     filterNodes(selectedKind, e.target.value, allNodes, allEdges);
                   }}
-                  placeholder="Filter symbols..."
-                  className="pl-8 pr-2.5 py-1 rounded bg-[#000000] border border-[#27272a] text-xs text-[#c9d1d9] placeholder-[#52525b] focus:outline-none focus:border-[#58a6ff] w-44 font-mono"
+                  placeholder="Search & Focus symbol..."
+                  className="pl-8 pr-7 py-1 rounded bg-[#000000] border border-[#27272a] text-xs text-[#c9d1d9] placeholder-[#52525b] focus:outline-none focus:border-[#58a6ff] w-48 font-mono transition"
                 />
+                {searchQuery && (
+                  <button
+                    onClick={() => {
+                      setSearchQuery("");
+                      setIsSearchDropdownOpen(false);
+                      filterNodes(selectedKind, "", allNodes, allEdges);
+                    }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-[#8b949e] hover:text-[#c9d1d9]"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+
+                {/* Autocomplete Dropdown Popup */}
+                {isSearchDropdownOpen && searchDropdownResults.length > 0 && (
+                  <div className="absolute left-0 top-9 w-80 bg-[#0a0a0a] border border-[#27272a] rounded-lg shadow-2xl z-50 max-h-72 overflow-y-auto p-1.5 font-mono space-y-1 backdrop-blur-md">
+                    <div className="px-2 py-1 text-[10px] text-[#8b949e] uppercase font-bold tracking-wider flex items-center justify-between border-b border-[#1f1f1f] mb-1">
+                      <span>Matching AST Symbols ({searchDropdownResults.length})</span>
+                      <span className="text-[9px] text-[#58a6ff]">Click to focus</span>
+                    </div>
+                    {searchDropdownResults.map((item) => {
+                      const itemData = item.data as any;
+                      const isCls = ["class", "interface", "struct"].includes(itemData?.kind);
+                      const isFn = itemData?.kind === "function";
+                      const isFl = ["file", "module"].includes(itemData?.kind);
+                      const badgeColor = isCls
+                        ? "text-[#d29922] bg-[#d29922]/10"
+                        : isFn
+                        ? "text-[#58a6ff] bg-[#58a6ff]/10"
+                        : isFl
+                        ? "text-[#3fb950] bg-[#3fb950]/10"
+                        : "text-[#8b949e] bg-[#161616]";
+
+                      return (
+                        <button
+                          key={item.id}
+                          onClick={() => handleSelectSearchSymbol(item)}
+                          className="w-full text-left p-2 rounded hover:bg-[#161616] border border-transparent hover:border-[#27272a] transition flex items-center justify-between gap-2 group"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5">
+                              <span className={`text-[9px] px-1 py-0.5 rounded font-bold uppercase ${badgeColor}`}>
+                                {itemData?.kind || "SYM"}
+                              </span>
+                              <span className="text-xs font-semibold text-[#f0f6fc] truncate group-hover:text-[#58a6ff]">
+                                {itemData?.label}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-[#8b949e] truncate mt-0.5" title={itemData?.file_path}>
+                              {itemData?.file_path}
+                            </p>
+                          </div>
+                          <span className="text-[10px] text-[#58a6ff] opacity-0 group-hover:opacity-100 transition shrink-0">
+                            Focus →
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               <div className="h-4 w-[1px] bg-[#222222]" />
@@ -701,8 +803,9 @@ export default function App() {
                   onEdgesChange={onEdgesChange}
                   onNodeClick={onNodeClick}
                   nodeTypes={nodeTypes}
+                  onInit={(instance) => setRfInstance(instance)}
                   fitView
-                  fitViewOptions={{ padding: 0.2 }}
+                  fitViewOptions={{ padding: 0.25 }}
                   minZoom={0.05}
                   maxZoom={2.5}
                 >
@@ -799,11 +902,22 @@ export default function App() {
         {/* ======================================================================= */}
         {/* ZONE 3: ARCHITECTURE AI STUDIO (Right Collapsible Panel) */}
         {/* ======================================================================= */}
+        {/* Floating Always-Visible Collapse/Expand Tab */}
+        <button
+          onClick={() => setIsChatMinimized(!isChatMinimized)}
+          className={`absolute top-14 z-30 flex items-center justify-center w-6 h-6 rounded-full bg-[#161616] border border-[#27272a] text-[#8b949e] hover:text-[#58a6ff] hover:border-[#58a6ff] transition shadow-xl ${
+            isChatMinimized ? "right-11" : "right-[368px] lg:right-[428px] xl:right-[448px]"
+          }`}
+          title={isChatMinimized ? "Expand AI Studio Panel" : "Minimize AI Studio Panel"}
+        >
+          {isChatMinimized ? <PanelRightOpen className="w-3.5 h-3.5" /> : <PanelRightClose className="w-3.5 h-3.5" />}
+        </button>
+
         {isChatMinimized ? (
-          <aside className="w-12 flex flex-col items-center py-3 bg-[#0a0a0a] border-l border-[#222222] shrink-0 transition-all duration-300 gap-4 font-mono z-20">
+          <aside className="w-14 flex flex-col items-center py-3 bg-[#0a0a0a] border-l border-[#222222] shrink-0 space-y-3 font-mono z-20">
             <button
               onClick={() => setIsChatMinimized(false)}
-              className="p-2 rounded-md hover:bg-[#161616] text-[#58a6ff] hover:text-[#f0f6fc] border border-[#27272a] transition"
+              className="p-2 rounded-md hover:bg-[#161616] text-[#8b949e] hover:text-[#58a6ff] transition"
               title="Expand AI Studio"
             >
               <PanelRightOpen className="w-4 h-4" />
@@ -843,7 +957,7 @@ export default function App() {
             </button>
           </aside>
         ) : (
-          <aside className="w-[460px] flex flex-col bg-[#0a0a0a] border-l border-[#222222] shrink-0 transition-all duration-300">
+          <aside className="w-[380px] lg:w-[440px] xl:w-[460px] flex flex-col bg-[#0a0a0a] border-l border-[#222222] shrink-0 transition-all duration-200 z-20">
             {/* Header Tabs: AI Studio vs RAGAS Benchmark + Minimize Button */}
             <div className="h-11 px-4 border-b border-[#222222] flex items-center justify-between shrink-0 font-mono">
               <div className="flex items-center gap-2">
