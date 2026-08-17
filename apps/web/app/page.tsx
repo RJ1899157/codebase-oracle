@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import dynamic from "next/dynamic";
 import {
   ReactFlow,
   Background,
@@ -31,9 +32,23 @@ import {
   Zap,
   CheckCircle2,
   XCircle,
+  Box,
+  Orbit,
+  Network,
 } from "lucide-react";
 
 import { CustomCodeNode } from "@/components/CustomCodeNode";
+
+// Dynamic client-side import for 3D Three.js Graph
+const CodeGraph3D = dynamic(() => import("@/components/CodeGraph3D"), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-full flex flex-col items-center justify-center bg-[#000000] text-[#8b949e] font-mono text-xs gap-3">
+      <Loader2 className="w-6 h-6 text-[#58a6ff] animate-spin" />
+      <span>Initializing WebGL 3D Cosmos Engine...</span>
+    </div>
+  ),
+});
 
 interface Citation {
   file_path: string;
@@ -149,7 +164,7 @@ export default function App() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [activeModel, setActiveModel] = useState<string>("Detecting LLM...");
 
-  const [layoutMode, setLayoutMode] = useState<"layered" | "radial">("layered");
+  const [layoutMode, setLayoutMode] = useState<"layered" | "radial" | "3d">("layered");
   const [allNodes, setAllNodes] = useState<Node[]>([]);
   const [allEdges, setAllEdges] = useState<Edge[]>([]);
   const [selectedKind, setSelectedKind] = useState<string>("all");
@@ -223,10 +238,11 @@ export default function App() {
   );
 
   const fetchGraphData = useCallback(
-    async (url: string, layout: "layered" | "radial") => {
+    async (url: string, layout: "layered" | "radial" | "3d") => {
       try {
+        const fetchLayout = layout === "3d" ? "radial" : layout;
         const res = await fetch(
-          `http://localhost:8000/graph?github_url=${encodeURIComponent(url)}&layout=${layout}`
+          `http://localhost:8000/graph?github_url=${encodeURIComponent(url)}&layout=${fetchLayout}`
         );
         if (res.ok) {
           const data = await res.json();
@@ -262,7 +278,7 @@ export default function App() {
     }
   };
 
-  const handleLayoutToggle = async (mode: "layered" | "radial") => {
+  const handleLayoutToggle = async (mode: "layered" | "radial" | "3d") => {
     setLayoutMode(mode);
     if (githubUrl) {
       await fetchGraphData(githubUrl, mode);
@@ -352,10 +368,34 @@ export default function App() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  // Convert React Flow nodes for 3D component
+  const nodesFor3D = useMemo(() => {
+    return nodes.map((n) => ({
+      id: n.id,
+      data: {
+        id: n.id,
+        label: (n.data as any)?.label || n.id,
+        kind: (n.data as any)?.kind || "symbol",
+        file_path: (n.data as any)?.file_path,
+        start_line: (n.data as any)?.start_line,
+        end_line: (n.data as any)?.end_line,
+      },
+    }));
+  }, [nodes]);
+
+  const edgesFor3D = useMemo(() => {
+    return edges.map((e) => ({
+      id: e.id,
+      source: e.source,
+      target: e.target,
+      label: (e.data as any)?.label || "",
+    }));
+  }, [edges]);
+
   return (
     <div className="flex flex-col w-screen h-screen overflow-hidden bg-[#000000] text-[#c9d1d9] font-sans">
       {/* ========================================================================= */}
-      {/* ZONE 1: JET BLACK HEADER (Solid 56px Bar) */}
+      {/* ZONE 1: JET BLACK COMMAND HEADER (Solid 56px Bar) */}
       {/* ========================================================================= */}
       <header className="h-14 px-5 border-b border-[#222222] bg-[#0a0a0a] flex items-center justify-between shrink-0 z-30">
         {/* Left: Brand Icon & Title */}
@@ -462,7 +502,7 @@ export default function App() {
             <ArrowRight className="w-3 h-3 text-[#52525b]" />
             <div className="flex items-center gap-2">
               <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#161616] border border-[#27272a] text-[#8b949e]">2</span>
-              <span>Filter symbols & explore technical blueprint</span>
+              <span>Filter symbols & explore in 2D or 3D Cosmos</span>
             </div>
             <ArrowRight className="w-3 h-3 text-[#52525b]" />
             <div className="flex items-center gap-2">
@@ -484,10 +524,10 @@ export default function App() {
       {/* ========================================================================= */}
       <div className="flex-1 flex overflow-hidden">
         {/* ======================================================================= */}
-        {/* ZONE 2: TECHNICAL BLUEPRINT GRAPH EXPLORER (Left 65%) */}
+        {/* ZONE 2: KNOWLEDGE GRAPH EXPLORER (2D / 3D COSMOS) (Left 65%) */}
         {/* ======================================================================= */}
         <section className="flex-1 flex flex-col relative border-r border-[#222222] bg-[#000000]">
-          {/* Graph Toolbar: Search, Kind Filter Tabs with Counts, Layout Switcher */}
+          {/* Graph Toolbar: Search, Kind Filter Tabs with Counts, 2D/3D Mode Switcher */}
           <div className="h-11 px-4 border-b border-[#222222] bg-[#0a0a0a] flex items-center justify-between shrink-0 z-10">
             {/* Search Filter */}
             <div className="flex items-center gap-2">
@@ -542,33 +582,48 @@ export default function App() {
               </div>
             </div>
 
-            {/* Layout Mode Switcher */}
+            {/* 2D / 3D Layout Mode Switcher */}
             <div className="flex items-center gap-1 font-mono text-[11px]">
-              <span className="text-[#8b949e] mr-1">Layout:</span>
+              <span className="text-[#8b949e] mr-1">View:</span>
               <button
                 onClick={() => handleLayoutToggle("layered")}
-                className={`px-2.5 py-1 rounded transition ${
+                className={`px-2.5 py-1 rounded transition flex items-center gap-1 ${
                   layoutMode === "layered"
                     ? "bg-[#161616] text-[#58a6ff] border border-[#27272a] font-semibold"
                     : "text-[#8b949e] hover:text-[#c9d1d9]"
                 }`}
               >
-                Blueprint Tree
+                <Network className="w-3 h-3" />
+                <span>2D Tree</span>
               </button>
+
               <button
                 onClick={() => handleLayoutToggle("radial")}
-                className={`px-2.5 py-1 rounded transition ${
+                className={`px-2.5 py-1 rounded transition flex items-center gap-1 ${
                   layoutMode === "radial"
                     ? "bg-[#161616] text-[#58a6ff] border border-[#27272a] font-semibold"
                     : "text-[#8b949e] hover:text-[#c9d1d9]"
                 }`}
               >
-                Orbital Galaxy
+                <Orbit className="w-3 h-3" />
+                <span>2D Galaxy</span>
+              </button>
+
+              <button
+                onClick={() => handleLayoutToggle("3d")}
+                className={`px-2.5 py-1 rounded transition flex items-center gap-1 ${
+                  layoutMode === "3d"
+                    ? "bg-[#161616] text-[#3fb950] border border-[#3fb950]/30 font-semibold"
+                    : "text-[#8b949e] hover:text-[#c9d1d9]"
+                }`}
+              >
+                <Box className="w-3 h-3" />
+                <span>3D Cosmos</span>
               </button>
             </div>
           </div>
 
-          {/* Canvas Viewport */}
+          {/* Canvas Viewport (2D React Flow OR 3D Three.js) */}
           <div className="flex-1 relative">
             {nodes.length === 0 ? (
               <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
@@ -579,9 +634,16 @@ export default function App() {
                   Knowledge Graph Canvas
                 </h3>
                 <p className="text-xs text-[#8b949e] font-mono max-w-sm mt-1.5 leading-relaxed">
-                  Enter any GitHub repository URL in the header or select a sample repository to inspect AST nodes and module relationships.
+                  Enter any GitHub repository URL in the header or select a sample repository to inspect AST nodes and module relationships in 2D or 3D Cosmos.
                 </p>
               </div>
+            ) : layoutMode === "3d" ? (
+              <CodeGraph3D
+                nodes={nodesFor3D}
+                edges={edgesFor3D}
+                onNodeSelect={(nodeData) => setSelectedNode(nodeData)}
+                selectedNodeId={selectedNode?.id}
+              />
             ) : (
               <div className="w-full h-full">
                 <ReactFlow
@@ -622,7 +684,7 @@ export default function App() {
 
             {/* Bottom Docked Selected Symbol Inspector */}
             {selectedNode && (
-              <div className="absolute bottom-4 right-4 z-20 w-96 rounded-lg border border-[#222222] bg-[#0a0a0a] p-4 shadow-2xl font-mono">
+              <div className="absolute bottom-4 right-4 z-20 w-96 rounded-lg border border-[#222222] bg-[#0a0a0a]/95 backdrop-blur-md p-4 shadow-2xl font-mono">
                 <div className="flex items-start justify-between gap-2 border-b border-[#1f1f1f] pb-2.5">
                   <div>
                     <div className="flex items-center gap-2">
