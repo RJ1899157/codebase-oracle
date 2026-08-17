@@ -147,9 +147,25 @@ class RepositoryRegistry:
                     })
 
         else:
-            # ⚡ Constellation Flow (Layered Dependency Graph)
-            col_spacing = 340
-            row_spacing = 110
+            # 🌲 Hierarchical AST Tree View
+            col_spacing = 380
+            row_spacing = 130
+            center_x = max(200, (len(selected_files) * col_spacing) // 2)
+
+            # Central Core Repository Root Node
+            core_id = f"core::{github_url}"
+            display_nodes_set.add(core_id)
+            nodes_list.append({
+                "id": core_id,
+                "type": "customCodeNode",
+                "data": {
+                    "label": f"📦 {repo_name.upper()}",
+                    "kind": "file",
+                    "file_path": github_url,
+                    "symbol_count": len(repo.batch.nodes),
+                },
+                "position": {"x": center_x - 120, "y": 40},
+            })
 
             for col_idx, file_path in enumerate(selected_files):
                 x_pos = col_idx * col_spacing + 80
@@ -158,11 +174,8 @@ class RepositoryRegistry:
                 file_node = next((n for n in nodes_in_file if n.kind == "file"), None)
                 classes = [n for n in nodes_in_file if n.kind in {"class", "interface", "struct"}]
                 functions = [n for n in nodes_in_file if n.kind in {"function", "module"}]
-                dependencies = [n for n in nodes_in_file if n.kind in {"import", "call"}]
 
-                current_row = 0
-
-                # Module Header
+                # Module Header (Level 1)
                 if file_node:
                     display_nodes_set.add(file_node.id)
                     nodes_list.append({
@@ -174,82 +187,111 @@ class RepositoryRegistry:
                             "file_path": file_node.file_path,
                             "start_line": file_node.start_line,
                             "end_line": file_node.end_line,
-                            "symbol_count": len(nodes_in_file) - 1,
+                            "symbol_count": len(classes) + len(functions),
                         },
-                        "position": {"x": x_pos, "y": current_row * row_spacing + 60},
+                        "position": {"x": x_pos, "y": 200},
                     })
-                    current_row += 1
 
-                # Classes & Structs
-                for cls in classes[:3]:
-                    display_nodes_set.add(cls.id)
-                    nodes_list.append({
-                        "id": cls.id,
-                        "type": "customCodeNode",
-                        "data": {
-                            "label": cls.name,
-                            "kind": cls.kind,
-                            "file_path": cls.file_path,
-                            "start_line": cls.start_line,
-                            "end_line": cls.end_line,
+                    # Connect Repository Root -> Module Header
+                    edges_list.append({
+                        "id": f"root-to-{file_node.id}",
+                        "source": core_id,
+                        "target": file_node.id,
+                        "sourceHandle": "bottom",
+                        "targetHandle": "top",
+                        "type": "smoothstep",
+                        "animated": True,
+                        "style": {
+                            "stroke": "#58a6ff",
+                            "strokeWidth": 1.8,
                         },
-                        "position": {"x": x_pos, "y": current_row * row_spacing + 60},
                     })
-                    current_row += 1
 
-                # Functions & Methods
-                for fn in functions[:4]:
-                    display_nodes_set.add(fn.id)
-                    nodes_list.append({
-                        "id": fn.id,
-                        "type": "customCodeNode",
-                        "data": {
-                            "label": fn.name,
-                            "kind": fn.kind,
-                            "file_path": fn.file_path,
-                            "start_line": fn.start_line,
-                            "end_line": fn.end_line,
-                        },
-                        "position": {"x": x_pos, "y": current_row * row_spacing + 60},
-                    })
-                    current_row += 1
+                    current_row = 1
 
-                # Connect Module -> Member Symbols in 2D Tree View
-                if file_node:
-                    for child in (classes[:4] + functions[:5]):
+                    # Classes & Structs (Level 2)
+                    for cls in classes[:3]:
+                        display_nodes_set.add(cls.id)
+                        nodes_list.append({
+                            "id": cls.id,
+                            "type": "customCodeNode",
+                            "data": {
+                                "label": cls.name,
+                                "kind": cls.kind,
+                                "file_path": cls.file_path,
+                                "start_line": cls.start_line,
+                                "end_line": cls.end_line,
+                            },
+                            "position": {"x": x_pos, "y": 200 + current_row * row_spacing},
+                        })
+
                         edges_list.append({
-                            "id": f"tree-edge-{file_node.id}-{child.id}",
+                            "id": f"tree-{file_node.id}-{cls.id}",
                             "source": file_node.id,
-                            "target": child.id,
+                            "target": cls.id,
+                            "sourceHandle": "bottom",
+                            "targetHandle": "top",
                             "type": "smoothstep",
-                            "label": "CONTAINS",
-                            "animated": False,
+                            "style": {
+                                "stroke": "#d29922",
+                                "strokeWidth": 1.5,
+                            },
+                        })
+                        current_row += 1
+
+                    # Functions & Methods (Level 3)
+                    for fn in functions[:4]:
+                        display_nodes_set.add(fn.id)
+                        nodes_list.append({
+                            "id": fn.id,
+                            "type": "customCodeNode",
+                            "data": {
+                                "label": fn.name,
+                                "kind": fn.kind,
+                                "file_path": fn.file_path,
+                                "start_line": fn.start_line,
+                                "end_line": fn.end_line,
+                            },
+                            "position": {"x": x_pos, "y": 200 + current_row * row_spacing},
+                        })
+
+                        edges_list.append({
+                            "id": f"tree-{file_node.id}-{fn.id}",
+                            "source": file_node.id,
+                            "target": fn.id,
+                            "sourceHandle": "bottom",
+                            "targetHandle": "top",
+                            "type": "smoothstep",
                             "style": {
                                 "stroke": "#3fb950",
                                 "strokeWidth": 1.5,
                             },
                         })
+                        current_row += 1
 
-        # Glowing Edge Connectors
+        # Glowing Edge Connectors for cross-module relationships
         for idx, edge in enumerate(repo.batch.edges):
             if edge.source_id in display_nodes_set and edge.target_id in display_nodes_set:
                 rel = edge.relation
                 edge_color = (
                     "#00f0ff" if rel == "CALLS" else
                     "#ffb700" if rel == "INHERITS" else
-                    "#ff3366" if rel == "IMPORTS" else
-                    "#00ff66"
+                    "#a371f7" if rel == "IMPORTS" else
+                    "#3fb950"
                 )
                 edges_list.append({
-                    "id": f"edge-{idx}-{rel}",
+                    "id": f"rel-{idx}-{rel}",
                     "source": edge.source_id,
                     "target": edge.target_id,
-                    "type": "smoothstep" if layout == "layered" else "default",
+                    "sourceHandle": "right" if layout == "layered" else None,
+                    "targetHandle": "left" if layout == "layered" else None,
+                    "type": "bezier" if layout == "layered" else "default",
                     "label": rel,
                     "animated": rel in {"CALLS", "IMPORTS"},
                     "style": {
                         "stroke": edge_color,
-                        "strokeWidth": 2.0 if rel in {"CALLS", "INHERITS"} else 1.2,
+                        "strokeWidth": 1.5,
+                        "strokeDasharray": "4 4" if (layout == "layered" and rel in {"IMPORTS", "CALLS"}) else None,
                     },
                 })
 

@@ -87,11 +87,11 @@ export const CustomCodeNode = memo(({ data, selected }: CustomCodeNodeProps) => 
           : "bg-[#0a0a0a] hover:bg-[#111111] border border-[#222222] hover:border-[#383838]"
       }`}
     >
-      {/* Handles */}
-      <Handle type="target" position={Position.Top} className="!bg-[#8b949e]" />
-      <Handle type="source" position={Position.Bottom} className="!bg-[#8b949e]" />
-      <Handle type="target" position={Position.Left} id="left" className="!bg-[#8b949e]" />
-      <Handle type="source" position={Position.Right} id="right" className="!bg-[#8b949e]" />
+      {/* Precision Tree & Graph Connector Handles */}
+      <Handle type="target" position={Position.Top} id="top" className="!w-2 !h-2 !bg-[#58a6ff] !border !border-[#0a0a0a]" />
+      <Handle type="source" position={Position.Bottom} id="bottom" className="!w-2 !h-2 !bg-[#3fb950] !border !border-[#0a0a0a]" />
+      <Handle type="target" position={Position.Left} id="left" className="!w-2 !h-2 !bg-[#8b949e] !border !border-[#0a0a0a]" />
+      <Handle type="source" position={Position.Right} id="right" className="!w-2 !h-2 !bg-[#8b949e] !border !border-[#0a0a0a]" />
 
       {/* Header: Kind Badge & Line Count */}
       <div className="flex items-center justify-between gap-2 mb-2">
