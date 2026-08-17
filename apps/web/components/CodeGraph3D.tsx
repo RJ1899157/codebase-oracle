@@ -16,6 +16,7 @@ import {
   Zap,
   Box,
   HelpCircle,
+  Maximize2,
 } from "lucide-react";
 
 interface NodeData {
@@ -37,7 +38,7 @@ interface EdgeData {
 interface CodeGraph3DProps {
   nodes: { id: string; data: NodeData }[];
   edges: EdgeData[];
-  onNodeSelect: (nodeData: NodeData) => void;
+  onNodeSelect: (nodeData: NodeData | null) => void;
   selectedNodeId?: string | null;
 }
 
@@ -99,6 +100,7 @@ export default function CodeGraph3D({
   const [cameraPreset, setCameraPreset] = useState<"orbit" | "birdseye" | "core">("orbit");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSubsystem, setSelectedSubsystem] = useState<string>("all");
+  const [activeFocusedNode, setActiveFocusedNode] = useState<NodeData | null>(null);
 
   // References for Three.js
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -108,8 +110,14 @@ export default function CodeGraph3D({
   const posMapRef = useRef<Map<string, THREE.Vector3>>(new Map());
   const spritesRef = useRef<THREE.Sprite[]>([]);
   const selectionRingRef = useRef<THREE.Mesh | null>(null);
-  const targetCameraPos = useRef<THREE.Vector3 | null>(null);
-  const targetControlTarget = useRef<THREE.Vector3 | null>(null);
+
+  // Smooth camera glide animation state
+  const isGlidingRef = useRef(false);
+  const glideTargetPos = useRef<THREE.Vector3>(new THREE.Vector3());
+  const glideTargetLookAt = useRef<THREE.Vector3>(new THREE.Vector3());
+  const glideStartTime = useRef<number>(0);
+  const glideStartCamPos = useRef<THREE.Vector3>(new THREE.Vector3());
+  const glideStartTarget = useRef<THREE.Vector3>(new THREE.Vector3());
 
   // Subsystems list for quick surfing
   const subsystems = useMemo(() => {
@@ -128,6 +136,17 @@ export default function CodeGraph3D({
       moduleCount: modules,
     };
   }, [nodes, edges]);
+
+  // Trigger smooth glide to position
+  const triggerGlide = useCallback((targetCam: THREE.Vector3, targetLook: THREE.Vector3) => {
+    if (!cameraRef.current || !controlsRef.current) return;
+    glideStartCamPos.current.copy(cameraRef.current.position);
+    glideStartTarget.current.copy(controlsRef.current.target);
+    glideTargetPos.current.copy(targetCam);
+    glideTargetLookAt.current.copy(targetLook);
+    glideStartTime.current = performance.now();
+    isGlidingRef.current = true;
+  }, []);
 
   // Setup Three.js Scene
   useEffect(() => {
@@ -159,12 +178,17 @@ export default function CodeGraph3D({
     // 4. Orbit Controls
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
-    controls.dampingFactor = 0.05;
+    controls.dampingFactor = 0.06;
     controls.autoRotate = autoRotate;
-    controls.autoRotateSpeed = 0.7;
+    controls.autoRotateSpeed = 0.6;
     controls.maxDistance = 2000;
-    controls.minDistance = 30;
+    controls.minDistance = 20;
     controlsRef.current = controls;
+
+    // Stop glide when user manually interacts
+    controls.addEventListener("start", () => {
+      isGlidingRef.current = false;
+    });
 
     // 5. Lights
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
@@ -290,7 +314,7 @@ export default function CodeGraph3D({
         const glowMesh = new THREE.Mesh(glowGeo, glowMat);
         mesh.add(glowMesh);
 
-        // Invisible Large Raycasting Hit Sphere (Generous 18px radius for effortless clicking!)
+        // Invisible Large Hit Sphere (18px radius)
         const hitGeo = new THREE.SphereGeometry(18, 12, 12);
         const hitMat = new THREE.MeshBasicMaterial({ visible: false });
         const hitMesh = new THREE.Mesh(hitGeo, hitMat);
@@ -370,7 +394,7 @@ export default function CodeGraph3D({
     scene.add(selRingMesh);
     selectionRingRef.current = selRingMesh;
 
-    // 10. Robust Pointer-based Raycasting (Click & Hover)
+    // 10. Robust Pointer-based Raycasting
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
     let pointerDownPos = { x: 0, y: 0 };
@@ -402,20 +426,28 @@ export default function CodeGraph3D({
 
     const handlePointerUp = (e: PointerEvent) => {
       const dist = Math.hypot(e.clientX - pointerDownPos.x, e.clientY - pointerDownPos.y);
-      if (dist > 8) return; // User was dragging the camera
+      if (dist > 8) return; // User was dragging/orbiting the camera
 
       const hitData = getRaycastHit(e.clientX, e.clientY);
       if (hitData) {
         onNodeSelect(hitData);
+        setActiveFocusedNode(hitData);
 
         // Smooth camera glide to focused node
         const pos = posMap.get((hitData as any).id);
         if (pos) {
-          targetControlTarget.current = pos.clone();
-          targetCameraPos.current = new THREE.Vector3(pos.x + 35, pos.y + 25, pos.z + 75);
+          triggerGlide(
+            new THREE.Vector3(pos.x + 40, pos.y + 30, pos.z + 85),
+            pos.clone()
+          );
 
           selRingMesh.position.copy(pos);
           selRingMesh.visible = true;
+        }
+      } else {
+        // Clicked on empty space: deselect & restore full dynamic orbit
+        if (selRingMesh.visible) {
+          selRingMesh.visible = false;
         }
       }
     };
@@ -435,7 +467,7 @@ export default function CodeGraph3D({
     };
     window.addEventListener("resize", handleResize);
 
-    // 12. Animation Loop with Smooth Camera Lerp
+    // 12. Animation Loop
     let animationFrameId: number;
     let progress = 0;
 
@@ -453,14 +485,18 @@ export default function CodeGraph3D({
       });
       posAttr.needsUpdate = true;
 
-      // Smooth camera interpolation if gliding to a selected node
-      if (targetCameraPos.current && targetControlTarget.current) {
-        camera.position.lerp(targetCameraPos.current, 0.08);
-        controls.target.lerp(targetControlTarget.current, 0.08);
-
-        if (camera.position.distanceTo(targetCameraPos.current) < 1.0) {
-          targetCameraPos.current = null;
-          targetControlTarget.current = null;
+      // Smooth camera glide interpolation (completes smoothly and leaves full dynamic control to user)
+      if (isGlidingRef.current) {
+        const elapsed = (performance.now() - glideStartTime.current) / 650;
+        if (elapsed >= 1.0) {
+          camera.position.copy(glideTargetPos.current);
+          controls.target.copy(glideTargetLookAt.current);
+          isGlidingRef.current = false;
+        } else {
+          // Smooth easeOutCubic interpolation
+          const t = 1 - Math.pow(1 - elapsed, 3);
+          camera.position.lerpVectors(glideStartCamPos.current, glideTargetPos.current, t);
+          controls.target.lerpVectors(glideStartTarget.current, glideTargetLookAt.current, t);
         }
       }
 
@@ -486,7 +522,7 @@ export default function CodeGraph3D({
       stars2.geometry.dispose();
       stars3.geometry.dispose();
     };
-  }, [nodes, edges, onNodeSelect]);
+  }, [nodes, edges, onNodeSelect, triggerGlide]);
 
   // Handle Auto-Rotate toggle
   useEffect(() => {
@@ -505,17 +541,15 @@ export default function CodeGraph3D({
   // Camera Presets
   const applyCameraPreset = (preset: "orbit" | "birdseye" | "core") => {
     setCameraPreset(preset);
-    if (!cameraRef.current || !controlsRef.current) return;
+    setActiveFocusedNode(null);
+    if (selectionRingRef.current) selectionRingRef.current.visible = false;
 
     if (preset === "orbit") {
-      targetControlTarget.current = new THREE.Vector3(0, 0, 0);
-      targetCameraPos.current = new THREE.Vector3(0, 150, 480);
+      triggerGlide(new THREE.Vector3(0, 150, 480), new THREE.Vector3(0, 0, 0));
     } else if (preset === "birdseye") {
-      targetControlTarget.current = new THREE.Vector3(0, 0, 0);
-      targetCameraPos.current = new THREE.Vector3(0, 560, 0);
+      triggerGlide(new THREE.Vector3(0, 560, 0), new THREE.Vector3(0, 0, 0));
     } else if (preset === "core") {
-      targetControlTarget.current = new THREE.Vector3(0, 0, 0);
-      targetCameraPos.current = new THREE.Vector3(0, 40, 220);
+      triggerGlide(new THREE.Vector3(0, 40, 220), new THREE.Vector3(0, 0, 0));
     }
   };
 
@@ -532,9 +566,10 @@ export default function CodeGraph3D({
     if (matchedNode) {
       const pos = posMapRef.current.get(matchedNode.id);
       if (pos) {
-        targetControlTarget.current = pos.clone();
-        targetCameraPos.current = new THREE.Vector3(pos.x + 35, pos.y + 25, pos.z + 75);
         onNodeSelect(matchedNode.data);
+        setActiveFocusedNode(matchedNode.data);
+
+        triggerGlide(new THREE.Vector3(pos.x + 40, pos.y + 30, pos.z + 85), pos.clone());
 
         if (selectionRingRef.current) {
           selectionRingRef.current.position.copy(pos);
@@ -551,9 +586,10 @@ export default function CodeGraph3D({
     if (modNode) {
       const pos = posMapRef.current.get(modNode.id);
       if (pos) {
-        targetControlTarget.current = pos.clone();
-        targetCameraPos.current = new THREE.Vector3(pos.x + 45, pos.y + 35, pos.z + 90);
         onNodeSelect(modNode.data);
+        setActiveFocusedNode(modNode.data);
+
+        triggerGlide(new THREE.Vector3(pos.x + 50, pos.y + 40, pos.z + 100), pos.clone());
 
         if (selectionRingRef.current) {
           selectionRingRef.current.position.copy(pos);
@@ -567,8 +603,14 @@ export default function CodeGraph3D({
     if (cameraRef.current && controlsRef.current) {
       const factor = direction === "in" ? 0.75 : 1.3;
       const targetPos = cameraRef.current.position.clone().multiplyScalar(factor);
-      targetCameraPos.current = targetPos;
+      triggerGlide(targetPos, controlsRef.current.target.clone());
     }
+  };
+
+  const handleResetOrbit = () => {
+    setActiveFocusedNode(null);
+    if (selectionRingRef.current) selectionRingRef.current.visible = false;
+    triggerGlide(new THREE.Vector3(0, 150, 480), new THREE.Vector3(0, 0, 0));
   };
 
   return (
@@ -583,12 +625,25 @@ export default function CodeGraph3D({
         {/* Floating 3D HUD Card */}
         <div className="w-64 rounded-xl bg-[#0a0a0a]/85 backdrop-blur-xl border border-[#222222] p-3.5 font-mono text-xs shadow-2xl space-y-3">
           {/* Header */}
-          <div>
-            <h3 className="text-xs font-bold text-[#f0f6fc] tracking-tight flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-[#58a6ff]" />
-              3D Cosmos Engine
-            </h3>
-            <p className="text-[10px] text-[#8b949e] mt-0.5">Click any node to focus & inspect</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-xs font-bold text-[#f0f6fc] tracking-tight flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-[#58a6ff]" />
+                3D Cosmos Engine
+              </h3>
+              <p className="text-[10px] text-[#8b949e] mt-0.5">
+                {activeFocusedNode ? `Focused: ${activeFocusedNode.label}` : "Interactive 3D Galaxy"}
+              </p>
+            </div>
+            {activeFocusedNode && (
+              <button
+                onClick={handleResetOrbit}
+                className="px-1.5 py-0.5 rounded text-[10px] bg-[#161616] hover:bg-[#222222] text-[#58a6ff] border border-[#27272a] transition"
+                title="Reset to full cosmos view"
+              >
+                Reset
+              </button>
+            )}
           </div>
 
           <div className="h-[1px] bg-[#1f1f1f]" />
@@ -657,7 +712,7 @@ export default function CodeGraph3D({
                 <Minus className="w-3 h-3" />
               </button>
               <button
-                onClick={() => applyCameraPreset("orbit")}
+                onClick={handleResetOrbit}
                 className="px-2 py-1 text-[#8b949e] hover:text-[#f0f6fc] hover:bg-[#222222] border-x border-[#27272a] transition text-[10px]"
                 title="Reset View"
               >
@@ -680,7 +735,7 @@ export default function CodeGraph3D({
           <button
             onClick={() => applyCameraPreset("orbit")}
             className={`px-2.5 py-1 rounded text-[11px] transition ${
-              cameraPreset === "orbit"
+              cameraPreset === "orbit" && !activeFocusedNode
                 ? "bg-[#161616] text-[#58a6ff] border border-[#27272a] font-semibold"
                 : "text-[#8b949e] hover:text-[#c9d1d9]"
             }`}
