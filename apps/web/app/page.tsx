@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import dynamic from "next/dynamic";
 import {
   ReactFlow,
@@ -178,6 +178,15 @@ export default function App() {
   const [showHelpGuide, setShowHelpGuide] = useState(false);
   const [evalResult, setEvalResult] = useState<any | null>(null);
   const [isEvaluating, setIsEvaluating] = useState(false);
+
+  const chatBottomRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll chat container to newest question and assistant response
+  useEffect(() => {
+    if (activeRightTab === "chat") {
+      chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, isAsking, activeRightTab]);
 
   // Check LLM status on mount
   useEffect(() => {
@@ -898,6 +907,7 @@ export default function App() {
                     <span>Synthesizing response with GraphRAG...</span>
                   </div>
                 )}
+                <div ref={chatBottomRef} className="h-1 shrink-0" />
               </div>
 
               {/* Chat Input Bar */}
