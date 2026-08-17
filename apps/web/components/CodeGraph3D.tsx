@@ -11,14 +11,11 @@ import {
   Compass,
   Eye,
   EyeOff,
-  Crosshair,
-  Layers,
   Search,
   ExternalLink,
   Zap,
-  Activity,
   Box,
-  X,
+  HelpCircle,
 } from "lucide-react";
 
 interface NodeData {
@@ -66,7 +63,7 @@ function createTextSprite(text: string, color: string): THREE.Sprite {
   ctx.roundRect(6, 6, 244, 52, 14);
   ctx.fill();
 
-  ctx.strokeStyle = "rgba(88, 166, 255, 0.28)";
+  ctx.strokeStyle = "rgba(88, 166, 255, 0.32)";
   ctx.lineWidth = 2;
   ctx.stroke();
 
@@ -98,19 +95,29 @@ export default function CodeGraph3D({
   const containerRef = useRef<HTMLDivElement>(null);
   const [autoRotate, setAutoRotate] = useState(true);
   const [showLabels, setShowLabels] = useState(true);
-  const [particleSpeed, setParticleSpeed] = useState<"slow" | "normal" | "fast">("normal");
   const [hoveredNode, setHoveredNode] = useState<NodeData | null>(null);
   const [cameraPreset, setCameraPreset] = useState<"orbit" | "birdseye" | "core">("orbit");
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedSubsystem, setSelectedSubsystem] = useState<string>("all");
 
   // References for Three.js
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
-  const nodeMeshMap = useRef<Map<string, THREE.Mesh>>(new Map());
+  const hitMeshesRef = useRef<THREE.Mesh[]>([]);
   const posMapRef = useRef<Map<string, THREE.Vector3>>(new Map());
   const spritesRef = useRef<THREE.Sprite[]>([]);
   const selectionRingRef = useRef<THREE.Mesh | null>(null);
+  const targetCameraPos = useRef<THREE.Vector3 | null>(null);
+  const targetControlTarget = useRef<THREE.Vector3 | null>(null);
+
+  // Subsystems list for quick surfing
+  const subsystems = useMemo(() => {
+    const mods = Array.from(
+      new Set(nodes.map((n) => n.data.file_path?.split("/")[0] || "root"))
+    );
+    return mods.slice(0, 6);
+  }, [nodes]);
 
   // Telemetry Metrics
   const stats = useMemo(() => {
@@ -140,7 +147,7 @@ export default function CodeGraph3D({
     camera.position.set(0, 150, 480);
     cameraRef.current = camera;
 
-    // 3. Renderer with High Dynamic Range Tone Mapping
+    // 3. Renderer
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -152,15 +159,15 @@ export default function CodeGraph3D({
     // 4. Orbit Controls
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
-    controls.dampingFactor = 0.04;
+    controls.dampingFactor = 0.05;
     controls.autoRotate = autoRotate;
     controls.autoRotateSpeed = 0.7;
     controls.maxDistance = 2000;
-    controls.minDistance = 40;
+    controls.minDistance = 30;
     controlsRef.current = controls;
 
     // 5. Lights
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
     scene.add(ambientLight);
 
     const cyanLight = new THREE.PointLight(0x58a6ff, 2.2, 1600);
@@ -200,7 +207,7 @@ export default function CodeGraph3D({
 
     // 7. Calculate 3D Orbital Positions
     const posMap = new Map<string, THREE.Vector3>();
-    const meshMap = new Map<string, THREE.Mesh>();
+    const hitMeshes: THREE.Mesh[] = [];
     const sprites: THREE.Sprite[] = [];
 
     const moduleGroups: Record<string, { id: string; data: NodeData }[]> = {};
@@ -213,7 +220,6 @@ export default function CodeGraph3D({
     const moduleKeys = Object.keys(moduleGroups);
     const modCount = moduleKeys.length;
 
-    // Create concentric subtle planetary orbital rings for modules
     moduleKeys.forEach((modKey, modIdx) => {
       const modAngle = (modIdx / Math.max(modCount, 1)) * Math.PI * 2;
       const modRadius = 240 + (modIdx % 2) * 45;
@@ -229,7 +235,7 @@ export default function CodeGraph3D({
         color: 0x3fb950,
         side: THREE.DoubleSide,
         transparent: true,
-        opacity: 0.12,
+        opacity: 0.15,
       });
       const ringMesh = new THREE.Mesh(ringGeo, ringMat);
       ringMesh.position.copy(modCenter);
@@ -270,9 +276,7 @@ export default function CodeGraph3D({
 
         const mesh = new THREE.Mesh(sphereGeo, sphereMat);
         mesh.position.copy(nodePos);
-        mesh.userData = node.data;
         scene.add(mesh);
-        meshMap.set(node.id, mesh);
 
         // Outer Additive Glow Halo
         const glowGeo = new THREE.SphereGeometry(radius * 1.55, 16, 16);
@@ -286,6 +290,15 @@ export default function CodeGraph3D({
         const glowMesh = new THREE.Mesh(glowGeo, glowMat);
         mesh.add(glowMesh);
 
+        // Invisible Large Raycasting Hit Sphere (Generous 18px radius for effortless clicking!)
+        const hitGeo = new THREE.SphereGeometry(18, 12, 12);
+        const hitMat = new THREE.MeshBasicMaterial({ visible: false });
+        const hitMesh = new THREE.Mesh(hitGeo, hitMat);
+        hitMesh.position.copy(nodePos);
+        hitMesh.userData = { ...node.data, id: node.id };
+        scene.add(hitMesh);
+        hitMeshes.push(hitMesh);
+
         // 3D Text Sprite Billboard
         const sprite = createTextSprite(node.data.label, config.str);
         sprite.position.set(nodePos.x, nodePos.y + radius + 8, nodePos.z);
@@ -296,7 +309,7 @@ export default function CodeGraph3D({
     });
 
     posMapRef.current = posMap;
-    nodeMeshMap.current = meshMap;
+    hitMeshesRef.current = hitMeshes;
     spritesRef.current = sprites;
 
     // 8. 3D Curved Arc Edges with Moving Energy Particles
@@ -326,14 +339,13 @@ export default function CodeGraph3D({
       const line = new THREE.Line(lineGeo, lineMat);
       scene.add(line);
 
-      // Initial particle position
       const p = curve.getPoint(0);
       particlePositions[idx * 3] = p.x;
       particlePositions[idx * 3 + 1] = p.y;
       particlePositions[idx * 3 + 2] = p.z;
     });
 
-    // Particle System traveling on curves
+    // Particle System
     const particleGeo = new THREE.BufferGeometry();
     particleGeo.setAttribute("position", new THREE.BufferAttribute(particlePositions, 3));
     const particleMat = new THREE.PointsMaterial({
@@ -347,33 +359,40 @@ export default function CodeGraph3D({
     scene.add(particleSystem);
 
     // 9. Animated Selection Halo Mesh
-    const selRingGeo = new THREE.TorusGeometry(12, 0.8, 16, 32);
+    const selRingGeo = new THREE.TorusGeometry(14, 1.0, 16, 32);
     const selRingMat = new THREE.MeshBasicMaterial({
       color: 0x58a6ff,
       transparent: true,
-      opacity: 0.8,
+      opacity: 0.85,
     });
     const selRingMesh = new THREE.Mesh(selRingGeo, selRingMat);
     selRingMesh.visible = false;
     scene.add(selRingMesh);
     selectionRingRef.current = selRingMesh;
 
-    // 10. Raycasting
+    // 10. Robust Pointer-based Raycasting (Click & Hover)
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
+    let pointerDownPos = { x: 0, y: 0 };
 
-    const handlePointerMove = (e: MouseEvent) => {
+    const getRaycastHit = (clientX: number, clientY: number) => {
       const rect = renderer.domElement.getBoundingClientRect();
-      mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-      mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+      mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
 
       raycaster.setFromCamera(mouse, camera);
-      const meshes = Array.from(meshMap.values());
-      const intersects = raycaster.intersectObjects(meshes);
+      const intersects = raycaster.intersectObjects(hitMeshes, false);
+      return intersects.length > 0 ? (intersects[0].object.userData as NodeData) : null;
+    };
 
-      if (intersects.length > 0) {
+    const handlePointerDown = (e: PointerEvent) => {
+      pointerDownPos = { x: e.clientX, y: e.clientY };
+    };
+
+    const handlePointerMove = (e: PointerEvent) => {
+      const hitData = getRaycastHit(e.clientX, e.clientY);
+      if (hitData) {
         container.style.cursor = "pointer";
-        const hitData = intersects[0].object.userData as NodeData;
         setHoveredNode(hitData);
       } else {
         container.style.cursor = "grab";
@@ -381,28 +400,29 @@ export default function CodeGraph3D({
       }
     };
 
-    const handleClick = (e: MouseEvent) => {
-      const rect = renderer.domElement.getBoundingClientRect();
-      mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-      mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+    const handlePointerUp = (e: PointerEvent) => {
+      const dist = Math.hypot(e.clientX - pointerDownPos.x, e.clientY - pointerDownPos.y);
+      if (dist > 8) return; // User was dragging the camera
 
-      raycaster.setFromCamera(mouse, camera);
-      const meshes = Array.from(meshMap.values());
-      const intersects = raycaster.intersectObjects(meshes);
-
-      if (intersects.length > 0) {
-        const hitData = intersects[0].object.userData as NodeData;
+      const hitData = getRaycastHit(e.clientX, e.clientY);
+      if (hitData) {
         onNodeSelect(hitData);
 
-        // Position selection ring
-        const targetMesh = intersects[0].object as THREE.Mesh;
-        selRingMesh.position.copy(targetMesh.position);
-        selRingMesh.visible = true;
+        // Smooth camera glide to focused node
+        const pos = posMap.get((hitData as any).id);
+        if (pos) {
+          targetControlTarget.current = pos.clone();
+          targetCameraPos.current = new THREE.Vector3(pos.x + 35, pos.y + 25, pos.z + 75);
+
+          selRingMesh.position.copy(pos);
+          selRingMesh.visible = true;
+        }
       }
     };
 
-    renderer.domElement.addEventListener("mousemove", handlePointerMove);
-    renderer.domElement.addEventListener("click", handleClick);
+    renderer.domElement.addEventListener("pointerdown", handlePointerDown);
+    renderer.domElement.addEventListener("pointermove", handlePointerMove);
+    renderer.domElement.addEventListener("pointerup", handlePointerUp);
 
     // 11. Resize
     const handleResize = () => {
@@ -415,27 +435,34 @@ export default function CodeGraph3D({
     };
     window.addEventListener("resize", handleResize);
 
-    // 12. Animation Loop with Particle Flow
+    // 12. Animation Loop with Smooth Camera Lerp
     let animationFrameId: number;
     let progress = 0;
 
     const animate = () => {
       animationFrameId = requestAnimationFrame(animate);
 
-      // Rotate starfields
       stars1.rotation.y += 0.0001;
       stars2.rotation.y -= 0.00015;
 
-      // Animate energy particles along curves
-      const speed = particleSpeed === "fast" ? 0.008 : particleSpeed === "slow" ? 0.002 : 0.005;
-      progress = (progress + speed) % 1;
-
+      progress = (progress + 0.005) % 1;
       const posAttr = particleGeo.getAttribute("position") as THREE.BufferAttribute;
       curves.forEach((c, i) => {
         const pt = c.getPoint(progress);
         posAttr.setXYZ(i, pt.x, pt.y, pt.z);
       });
       posAttr.needsUpdate = true;
+
+      // Smooth camera interpolation if gliding to a selected node
+      if (targetCameraPos.current && targetControlTarget.current) {
+        camera.position.lerp(targetCameraPos.current, 0.08);
+        controls.target.lerp(targetControlTarget.current, 0.08);
+
+        if (camera.position.distanceTo(targetCameraPos.current) < 1.0) {
+          targetCameraPos.current = null;
+          targetControlTarget.current = null;
+        }
+      }
 
       // Spin selection ring
       if (selRingMesh.visible) {
@@ -451,14 +478,15 @@ export default function CodeGraph3D({
     return () => {
       cancelAnimationFrame(animationFrameId);
       window.removeEventListener("resize", handleResize);
-      renderer.domElement.removeEventListener("mousemove", handlePointerMove);
-      renderer.domElement.removeEventListener("click", handleClick);
+      renderer.domElement.removeEventListener("pointerdown", handlePointerDown);
+      renderer.domElement.removeEventListener("pointermove", handlePointerMove);
+      renderer.domElement.removeEventListener("pointerup", handlePointerUp);
       renderer.dispose();
       stars1.geometry.dispose();
       stars2.geometry.dispose();
       stars3.geometry.dispose();
     };
-  }, [nodes, edges, onNodeSelect, particleSpeed]);
+  }, [nodes, edges, onNodeSelect]);
 
   // Handle Auto-Rotate toggle
   useEffect(() => {
@@ -480,22 +508,21 @@ export default function CodeGraph3D({
     if (!cameraRef.current || !controlsRef.current) return;
 
     if (preset === "orbit") {
-      cameraRef.current.position.set(0, 150, 480);
-      controlsRef.current.target.set(0, 0, 0);
+      targetControlTarget.current = new THREE.Vector3(0, 0, 0);
+      targetCameraPos.current = new THREE.Vector3(0, 150, 480);
     } else if (preset === "birdseye") {
-      cameraRef.current.position.set(0, 560, 0);
-      controlsRef.current.target.set(0, 0, 0);
+      targetControlTarget.current = new THREE.Vector3(0, 0, 0);
+      targetCameraPos.current = new THREE.Vector3(0, 560, 0);
     } else if (preset === "core") {
-      cameraRef.current.position.set(0, 40, 220);
-      controlsRef.current.target.set(0, 0, 0);
+      targetControlTarget.current = new THREE.Vector3(0, 0, 0);
+      targetCameraPos.current = new THREE.Vector3(0, 40, 220);
     }
-    controlsRef.current.update();
   };
 
   // Fly-to Searched Node in 3D
   const handleSearchFlyTo = (query: string) => {
     setSearchQuery(query);
-    if (!query.trim() || !cameraRef.current || !controlsRef.current) return;
+    if (!query.trim()) return;
 
     const q = query.toLowerCase();
     const matchedNode = nodes.find(
@@ -505,10 +532,28 @@ export default function CodeGraph3D({
     if (matchedNode) {
       const pos = posMapRef.current.get(matchedNode.id);
       if (pos) {
-        controlsRef.current.target.copy(pos);
-        cameraRef.current.position.set(pos.x + 40, pos.y + 30, pos.z + 80);
-        controlsRef.current.update();
+        targetControlTarget.current = pos.clone();
+        targetCameraPos.current = new THREE.Vector3(pos.x + 35, pos.y + 25, pos.z + 75);
         onNodeSelect(matchedNode.data);
+
+        if (selectionRingRef.current) {
+          selectionRingRef.current.position.copy(pos);
+          selectionRingRef.current.visible = true;
+        }
+      }
+    }
+  };
+
+  // Subsystem Surfer - Glide to selected module cluster
+  const handleFlyToSubsystem = (subsystemName: string) => {
+    setSelectedSubsystem(subsystemName);
+    const modNode = nodes.find((n) => (n.data.file_path || "").startsWith(subsystemName));
+    if (modNode) {
+      const pos = posMapRef.current.get(modNode.id);
+      if (pos) {
+        targetControlTarget.current = pos.clone();
+        targetCameraPos.current = new THREE.Vector3(pos.x + 45, pos.y + 35, pos.z + 90);
+        onNodeSelect(modNode.data);
 
         if (selectionRingRef.current) {
           selectionRingRef.current.position.copy(pos);
@@ -520,9 +565,9 @@ export default function CodeGraph3D({
 
   const handleZoom = (direction: "in" | "out") => {
     if (cameraRef.current && controlsRef.current) {
-      const factor = direction === "in" ? 0.8 : 1.25;
-      cameraRef.current.position.multiplyScalar(factor);
-      controlsRef.current.update();
+      const factor = direction === "in" ? 0.75 : 1.3;
+      const targetPos = cameraRef.current.position.clone().multiplyScalar(factor);
+      targetCameraPos.current = targetPos;
     }
   };
 
@@ -543,7 +588,7 @@ export default function CodeGraph3D({
               <Sparkles className="w-3.5 h-3.5 text-[#58a6ff]" />
               3D Cosmos Engine
             </h3>
-            <p className="text-[10px] text-[#8b949e] mt-0.5">3D cosmos knowledge graph</p>
+            <p className="text-[10px] text-[#8b949e] mt-0.5">Click any node to focus & inspect</p>
           </div>
 
           <div className="h-[1px] bg-[#1f1f1f]" />
@@ -555,7 +600,7 @@ export default function CodeGraph3D({
               type="text"
               value={searchQuery}
               onChange={(e) => handleSearchFlyTo(e.target.value)}
-              placeholder="3D Search & Fly To..."
+              placeholder="3D Search & Glide To..."
               className="w-full pl-7 pr-2 py-1 rounded bg-[#161616] border border-[#27272a] text-[11px] text-[#f0f6fc] placeholder-[#52525b] focus:outline-none focus:border-[#58a6ff]"
             />
           </div>
@@ -666,6 +711,29 @@ export default function CodeGraph3D({
       </div>
 
       {/* ===================================================================== */}
+      {/* SUBSYSTEM QUICK-SURFING PILLS (Top Right) */}
+      {/* ===================================================================== */}
+      {subsystems.length > 0 && (
+        <div className="absolute top-4 right-4 z-20 hidden xl:flex items-center gap-1.5 bg-[#0a0a0a]/85 backdrop-blur-xl border border-[#222222] p-1.5 rounded-lg font-mono text-[11px] shadow-2xl">
+          <span className="text-[10px] text-[#8b949e] px-1.5 uppercase font-bold">Surf Subsystem:</span>
+          {subsystems.map((sub) => (
+            <button
+              key={sub}
+              onClick={() => handleFlyToSubsystem(sub)}
+              className={`px-2 py-1 rounded transition text-[10px] truncate max-w-[100px] ${
+                selectedSubsystem === sub
+                  ? "bg-[#161616] text-[#3fb950] border border-[#3fb950]/30 font-semibold"
+                  : "text-[#c9d1d9] hover:bg-[#161616] border border-transparent"
+              }`}
+              title={`Glide to ${sub}`}
+            >
+              {sub}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* ===================================================================== */}
       {/* FLOATING 3D TELEMETRY PILL (Bottom Center) */}
       {/* ===================================================================== */}
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-3 bg-[#0a0a0a]/85 backdrop-blur-xl border border-[#222222] px-4 py-2 rounded-full font-mono text-[11px] shadow-2xl">
@@ -692,7 +760,7 @@ export default function CodeGraph3D({
 
       {/* Hovered Node Floating Tooltip */}
       {hoveredNode && (
-        <div className="absolute top-4 right-4 z-20 bg-[#0a0a0a]/95 backdrop-blur-md border border-[#27272a] p-3 rounded-lg font-mono text-xs text-white shadow-2xl pointer-events-none max-w-sm animate-in fade-in duration-100">
+        <div className="absolute top-20 right-4 z-20 bg-[#0a0a0a]/95 backdrop-blur-md border border-[#27272a] p-3 rounded-lg font-mono text-xs text-white shadow-2xl pointer-events-none max-w-sm animate-in fade-in duration-100">
           <div className="flex items-center justify-between gap-2 border-b border-[#1f1f1f] pb-1.5 mb-1.5">
             <div className="flex items-center gap-2">
               <span
