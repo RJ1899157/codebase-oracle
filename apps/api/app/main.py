@@ -221,7 +221,10 @@ def _build_dynamic_eval_cases(repo_data) -> list[EvalTestCase]:
 def evaluate(github_url: str = Query(..., description="The GitHub repository URL")) -> dict:
     repo_data = global_registry.get(github_url)
     if not repo_data:
-        raise HTTPException(status_code=404, detail=f"Repository '{github_url}' not ingested yet.")
+        try:
+            repo_data = ingest_github_repo(github_url)
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Failed to ingest repository '{github_url}': {str(e)}")
 
     benchmark_cases = _build_dynamic_eval_cases(repo_data)
 

@@ -361,13 +361,28 @@ export default function App() {
   };
 
   const handleRunEvaluation = async () => {
-    if (!githubUrl) return;
+    const targetUrl = githubUrl || "https://github.com/fastapi/fastapi";
+    if (!githubUrl) setGithubUrl(targetUrl);
     setIsEvaluating(true);
     setActiveRightTab("benchmark");
     try {
-      const res = await fetch(`${API_BASE}/evaluate?github_url=${encodeURIComponent(githubUrl)}`);
-      const data = await res.json();
-      setEvalResult(data);
+      // Ensure graph is loaded if empty
+      if (!allNodes || allNodes.length === 0) {
+        await handleIngest(targetUrl);
+      }
+      const res = await fetch(`${API_BASE}/evaluate?github_url=${encodeURIComponent(targetUrl)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setEvalResult(data);
+      } else {
+        // Fallback: ingest explicitly and re-run evaluation
+        await handleIngest(targetUrl);
+        const retryRes = await fetch(`${API_BASE}/evaluate?github_url=${encodeURIComponent(targetUrl)}`);
+        if (retryRes.ok) {
+          const retryData = await retryRes.json();
+          setEvalResult(retryData);
+        }
+      }
     } catch (err) {
       console.error("Evaluation failed", err);
     } finally {
@@ -974,7 +989,7 @@ export default function App() {
                   <Loader2 className="w-6 h-6 text-[#58a6ff] animate-spin" />
                   <p className="text-xs">Running dynamic RAGAS test suite...</p>
                 </div>
-              ) : evalResult ? (
+              ) : evalResult && evalResult.mean_faithfulness !== undefined ? (
                 <div className="space-y-4">
                   {/* Metric Cards */}
                   <div className="grid grid-cols-3 gap-2">
