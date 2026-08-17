@@ -214,7 +214,21 @@ class RepositoryRegistry:
                     })
                     current_row += 1
 
-                # Only display files, classes, interfaces, structs, and functions
+                # Connect Module -> Member Symbols in 2D Tree View
+                if file_node:
+                    for child in (classes[:4] + functions[:5]):
+                        edges_list.append({
+                            "id": f"tree-edge-{file_node.id}-{child.id}",
+                            "source": file_node.id,
+                            "target": child.id,
+                            "type": "smoothstep",
+                            "label": "CONTAINS",
+                            "animated": False,
+                            "style": {
+                                "stroke": "#3fb950",
+                                "strokeWidth": 1.5,
+                            },
+                        })
 
         # Glowing Edge Connectors
         for idx, edge in enumerate(repo.batch.edges):

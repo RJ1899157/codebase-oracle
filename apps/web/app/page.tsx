@@ -35,6 +35,8 @@ import {
   Box,
   Orbit,
   Network,
+  PanelRightClose,
+  PanelRightOpen,
 } from "lucide-react";
 
 import { CustomCodeNode } from "@/components/CustomCodeNode";
@@ -177,6 +179,7 @@ export default function App() {
   const [selectedNode, setSelectedNode] = useState<any | null>(null);
 
   const [activeRightTab, setActiveRightTab] = useState<"chat" | "benchmark">("chat");
+  const [isChatMinimized, setIsChatMinimized] = useState(false);
   const [showHelpGuide, setShowHelpGuide] = useState(false);
   const [evalResult, setEvalResult] = useState<any | null>(null);
   const [isEvaluating, setIsEvaluating] = useState(false);
@@ -297,8 +300,12 @@ export default function App() {
 
   const handleLayoutToggle = async (mode: "layered" | "radial" | "3d") => {
     setLayoutMode(mode);
-    if (githubUrl) {
-      await fetchGraphData(githubUrl, mode);
+    const targetUrl = githubUrl || "https://github.com/fastapi/fastapi";
+    if (!githubUrl) setGithubUrl(targetUrl);
+    if (!allNodes || allNodes.length === 0) {
+      await handleIngest(targetUrl);
+    } else {
+      await fetchGraphData(targetUrl, mode);
     }
   };
 
@@ -326,6 +333,7 @@ export default function App() {
     setMessages(updatedHistory);
     if (!promptOverride) setInputQuery("");
     setIsAsking(true);
+    setIsChatMinimized(false);
     setActiveRightTab("chat");
 
     try {
@@ -789,285 +797,373 @@ export default function App() {
         </section>
 
         {/* ======================================================================= */}
-        {/* ZONE 3: ARCHITECTURE AI STUDIO (Right 35% Fixed Panel) */}
+        {/* ZONE 3: ARCHITECTURE AI STUDIO (Right Collapsible Panel) */}
         {/* ======================================================================= */}
-        <aside className="w-[460px] flex flex-col bg-[#0a0a0a] shrink-0">
-          {/* Header Tabs: AI Studio vs RAGAS Benchmark */}
-          <div className="h-11 px-4 border-b border-[#222222] flex items-center justify-between shrink-0 font-mono">
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setActiveRightTab("chat")}
-                className={`px-3 py-1 rounded text-xs font-semibold flex items-center gap-1.5 transition ${
-                  activeRightTab === "chat"
-                    ? "bg-[#161616] text-[#58a6ff] border border-[#27272a]"
-                    : "text-[#8b949e] hover:text-[#c9d1d9]"
-                }`}
-              >
-                <Terminal className="w-3.5 h-3.5 text-[#58a6ff]" />
-                Architecture Chat
-              </button>
+        {isChatMinimized ? (
+          <aside className="w-12 flex flex-col items-center py-3 bg-[#0a0a0a] border-l border-[#222222] shrink-0 transition-all duration-300 gap-4 font-mono z-20">
+            <button
+              onClick={() => setIsChatMinimized(false)}
+              className="p-2 rounded-md hover:bg-[#161616] text-[#58a6ff] hover:text-[#f0f6fc] border border-[#27272a] transition"
+              title="Expand AI Studio"
+            >
+              <PanelRightOpen className="w-4 h-4" />
+            </button>
 
-              <button
-                onClick={() => {
-                  setActiveRightTab("benchmark");
-                  if (!evalResult && githubUrl) handleRunEvaluation();
-                }}
-                className={`px-3 py-1 rounded text-xs font-semibold flex items-center gap-1.5 transition ${
-                  activeRightTab === "benchmark"
-                    ? "bg-[#161616] text-[#3fb950] border border-[#27272a]"
-                    : "text-[#8b949e] hover:text-[#c9d1d9]"
-                }`}
-              >
-                <Gauge className="w-3.5 h-3.5 text-[#3fb950]" />
-                RAGAS Eval
-              </button>
-            </div>
+            <div className="w-6 h-[1px] bg-[#222222]" />
 
-            {activeRightTab === "chat" && messages.length > 0 && (
-              <button
-                onClick={() => setMessages([])}
-                className="text-[#8b949e] hover:text-rose-400 flex items-center gap-1 text-[11px] transition px-2 py-1 rounded hover:bg-[#161616]"
-                title="Clear conversation"
-              >
-                <Trash2 className="w-3 h-3" />
-                Clear
-              </button>
-            )}
-          </div>
+            <button
+              onClick={() => {
+                setActiveRightTab("chat");
+                setIsChatMinimized(false);
+              }}
+              className={`p-2 rounded-md transition ${
+                activeRightTab === "chat"
+                  ? "bg-[#161616] text-[#58a6ff] border border-[#27272a]"
+                  : "text-[#8b949e] hover:text-[#c9d1d9]"
+              }`}
+              title="Architecture Chat"
+            >
+              <Terminal className="w-4 h-4" />
+            </button>
 
-          {/* TAB 1: ARCHITECTURE CHAT STUDIO */}
-          {activeRightTab === "chat" && (
-            <div className="flex-1 flex flex-col overflow-hidden">
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {messages.length === 0 && !isAsking && (
-                  <div className="h-full flex flex-col items-center justify-center text-center text-[#8b949e] px-4 font-mono">
-                    <div className="w-12 h-12 rounded-xl bg-[#111111] border border-[#222222] flex items-center justify-center mb-3 text-[#58a6ff]">
-                      <Sparkles className="w-6 h-6" />
-                    </div>
-                    <h4 className="text-xs font-semibold text-[#f0f6fc] uppercase tracking-wider">
-                      Conversational Codebase Architect
-                    </h4>
-                    <p className="text-[11px] text-[#8b949e] mt-1 max-w-xs leading-relaxed">
-                      Grounded with AST symbols, graph relationships, and Groq LLaMA 3.3 70B.
-                    </p>
+            <button
+              onClick={() => {
+                setActiveRightTab("benchmark");
+                setIsChatMinimized(false);
+                if (!evalResult && githubUrl) handleRunEvaluation();
+              }}
+              className={`p-2 rounded-md transition ${
+                activeRightTab === "benchmark"
+                  ? "bg-[#161616] text-[#3fb950] border border-[#27272a]"
+                  : "text-[#8b949e] hover:text-[#c9d1d9]"
+              }`}
+              title="RAGAS Benchmark"
+            >
+              <Gauge className="w-4 h-4" />
+            </button>
+          </aside>
+        ) : (
+          <aside className="w-[460px] flex flex-col bg-[#0a0a0a] border-l border-[#222222] shrink-0 transition-all duration-300">
+            {/* Header Tabs: AI Studio vs RAGAS Benchmark + Minimize Button */}
+            <div className="h-11 px-4 border-b border-[#222222] flex items-center justify-between shrink-0 font-mono">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setActiveRightTab("chat")}
+                  className={`px-3 py-1 rounded text-xs font-semibold flex items-center gap-1.5 transition ${
+                    activeRightTab === "chat"
+                      ? "bg-[#161616] text-[#58a6ff] border border-[#27272a]"
+                      : "text-[#8b949e] hover:text-[#c9d1d9]"
+                  }`}
+                >
+                  <Terminal className="w-3.5 h-3.5 text-[#58a6ff]" />
+                  Architecture Chat
+                </button>
 
-                    {/* Preset Architecture Questions */}
-                    <div className="mt-5 flex flex-col gap-2 w-full max-w-xs text-left">
-                      {[
-                        "What is the main architecture and entrypoint of this repository?",
-                        "How is data flow and routing structured across modules?",
-                        "What are the core classes, interfaces, and key abstractions?",
-                        "Are there any external dependencies or API clients configured?",
-                      ].map((prompt, idx) => (
-                        <button
-                          key={idx}
-                          onClick={() => handleSendMessage(undefined, prompt)}
-                          className="text-[11px] text-[#c9d1d9] hover:text-[#f0f6fc] bg-[#111111] hover:bg-[#161616] border border-[#222222] hover:border-[#333333] px-3 py-2 rounded-md text-left transition font-mono truncate group"
-                        >
-                          <span className="text-[#58a6ff] mr-1.5 font-bold">→</span> {prompt}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                <button
+                  onClick={() => {
+                    setActiveRightTab("benchmark");
+                    if (!evalResult && githubUrl) handleRunEvaluation();
+                  }}
+                  className={`px-3 py-1 rounded text-xs font-semibold flex items-center gap-1.5 transition ${
+                    activeRightTab === "benchmark"
+                      ? "bg-[#161616] text-[#3fb950] border border-[#27272a]"
+                      : "text-[#8b949e] hover:text-[#c9d1d9]"
+                  }`}
+                >
+                  <Gauge className="w-3.5 h-3.5 text-[#3fb950]" />
+                  RAGAS Eval
+                </button>
+              </div>
+
+              <div className="flex items-center gap-1">
+                {activeRightTab === "chat" && messages.length > 0 && (
+                  <button
+                    onClick={() => setMessages([])}
+                    className="text-[#8b949e] hover:text-rose-400 flex items-center gap-1 text-[11px] transition px-2 py-1 rounded hover:bg-[#161616]"
+                    title="Clear conversation"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    Clear
+                  </button>
                 )}
 
-                {/* Messages Stream */}
-                {messages.map((msg) => (
-                  <div key={msg.id} className="space-y-2">
-                    {msg.role === "user" ? (
-                      <div className="flex items-start justify-end">
-                        <div className="max-w-[85%] rounded-lg bg-[#161616] border border-[#27272a] p-3">
-                          <p className="text-xs font-mono text-[#f0f6fc] leading-relaxed">{msg.content}</p>
-                          <span className="text-[9px] font-mono text-[#8b949e] mt-1 block text-right">
-                            {msg.timestamp}
-                          </span>
-                        </div>
+                <button
+                  onClick={() => setIsChatMinimized(true)}
+                  className="p-1.5 rounded-md hover:bg-[#161616] text-[#8b949e] hover:text-[#c9d1d9] transition"
+                  title="Minimize Panel"
+                >
+                  <PanelRightClose className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* TAB 1: ARCHITECTURE CHAT STUDIO */}
+            {activeRightTab === "chat" && (
+              <div className="flex-1 flex flex-col overflow-hidden">
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  {messages.length === 0 && !isAsking && (
+                    <div className="h-full flex flex-col items-center justify-center text-center text-[#8b949e] px-4 font-mono">
+                      <div className="w-12 h-12 rounded-xl bg-[#111111] border border-[#222222] flex items-center justify-center mb-3 text-[#58a6ff]">
+                        <Sparkles className="w-6 h-6" />
                       </div>
-                    ) : (
-                      <div className="rounded-lg bg-[#000000] border border-[#222222] p-3.5 shadow-sm">
-                        <div className="flex items-center justify-between border-b border-[#1f1f1f] pb-1.5 mb-2 font-mono">
-                          <span className="text-[10px] font-semibold text-[#58a6ff] uppercase tracking-wider flex items-center gap-1.5">
-                            <Sparkles className="w-3 h-3 text-[#58a6ff]" />
-                            Codebase Oracle
-                          </span>
+                      <h4 className="text-xs font-semibold text-[#f0f6fc] uppercase tracking-wider">
+                        Conversational Codebase Architect
+                      </h4>
+                      <p className="text-[11px] text-[#8b949e] mt-1 max-w-xs leading-relaxed">
+                        Grounded with AST symbols, graph relationships, and Groq LLaMA 3.3 70B.
+                      </p>
+
+                      {/* Preset Architecture Questions */}
+                      <div className="mt-5 flex flex-col gap-2 w-full max-w-xs text-left">
+                        {[
+                          "What is the main architecture and entrypoint of this repository?",
+                          "How is data flow and routing structured across modules?",
+                          "What are the core classes, interfaces, and key abstractions?",
+                          "Are there any external dependencies or API clients configured?",
+                        ].map((q, idx) => (
                           <button
-                            onClick={() => copyToClipboard(msg.content, msg.id)}
-                            className="text-[#8b949e] hover:text-[#c9d1d9] text-[10px] flex items-center gap-1 transition"
+                            key={idx}
+                            onClick={() => handleSendMessage(undefined, q)}
+                            className="text-[11px] text-[#c9d1d9] hover:text-[#f0f6fc] bg-[#111111] hover:bg-[#161616] border border-[#222222] hover:border-[#333333] px-3 py-2 rounded-md text-left transition font-mono truncate group"
                           >
-                            {copiedId === msg.id ? (
-                              <Check className="w-3 h-3 text-[#3fb950]" />
-                            ) : (
-                              <Copy className="w-3 h-3" />
-                            )}
+                            <span className="text-[#58a6ff] mr-1.5 font-bold">→</span> {q}
                           </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {messages.map((msg) => (
+                    <div
+                      key={msg.id}
+                      className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}
+                    >
+                      <div
+                        className={`max-w-[92%] rounded-lg p-3.5 ${
+                          msg.role === "user"
+                            ? "bg-[#161616] border border-[#27272a] text-[#f0f6fc] text-xs font-mono"
+                            : msg.refused
+                            ? "bg-[#1c1212] border border-rose-900/40 text-[#f0f6fc]"
+                            : "bg-[#000000] border border-[#222222] text-[#c9d1d9]"
+                        }`}
+                      >
+                        {/* Header Badge */}
+                        <div className="flex items-center justify-between gap-4 mb-2 pb-1.5 border-b border-[#18181b]">
+                          <div className="flex items-center gap-1.5 font-mono text-[10px]">
+                            {msg.role === "user" ? (
+                              <span className="text-[#8b949e]">DEVELOPER</span>
+                            ) : msg.refused ? (
+                              <span className="text-rose-400 font-semibold uppercase flex items-center gap-1">
+                                <XCircle className="w-3 h-3" /> Anti-Hallucination Refusal
+                              </span>
+                            ) : (
+                              <span className="text-[#58a6ff] font-semibold uppercase flex items-center gap-1">
+                                <Sparkles className="w-3 h-3" /> Codebase Oracle
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-1 text-[10px] text-[#8b949e] font-mono">
+                            <span>{msg.timestamp}</span>
+                            {msg.role === "assistant" && (
+                              <button
+                                onClick={() => copyToClipboard(msg.content, msg.id)}
+                                className="ml-1 p-1 hover:text-[#f0f6fc] rounded hover:bg-[#161616] transition"
+                                title="Copy answer"
+                              >
+                                {copiedId === msg.id ? (
+                                  <Check className="w-3 h-3 text-[#3fb950]" />
+                                ) : (
+                                  <Copy className="w-3 h-3" />
+                                )}
+                              </button>
+                            )}
+                          </div>
                         </div>
 
-                        <MarkdownRenderer content={msg.content} />
+                        {/* Content */}
+                        {msg.role === "user" ? (
+                          <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                        ) : (
+                          <MarkdownRenderer content={msg.content} />
+                        )}
 
-                        {/* Grounded Citations */}
+                        {/* Citations list */}
                         {msg.citations && msg.citations.length > 0 && (
-                          <div className="mt-3 pt-2.5 border-t border-[#1f1f1f] font-mono">
-                            <span className="text-[10px] font-semibold text-[#8b949e] uppercase tracking-wider block mb-1.5">
+                          <div className="mt-3 pt-2.5 border-t border-[#18181b] space-y-1.5">
+                            <span className="text-[10px] font-semibold text-[#8b949e] uppercase tracking-wider font-mono">
                               Verified Code Citations:
                             </span>
-                            <div className="flex flex-wrap gap-1.5">
-                              {msg.citations.map((c, cIdx) => (
-                                <a
-                                  key={cIdx}
-                                  href={c.github_url || "#"}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="px-2 py-1 rounded bg-[#111111] hover:bg-[#161616] border border-[#222222] hover:border-[#58a6ff] text-[10px] text-[#58a6ff] flex items-center gap-1 transition"
+                            <div className="flex flex-wrap gap-1.5 pt-1">
+                              {msg.citations.map((cit, i) => (
+                                <span
+                                  key={i}
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[#161616] border border-[#27272a] text-[10px] text-[#58a6ff] font-mono"
                                 >
-                                  <span>{c.file_path.split("/").pop()}</span>
-                                  <span className="text-[#8b949e]">L{c.start_line}–{c.end_line}</span>
-                                  <ExternalLink className="w-2.5 h-2.5 text-[#8b949e]" />
-                                </a>
+                                  <span>
+                                    {cit.file_path.split("/").pop()} L{cit.start_line}–{cit.end_line}
+                                  </span>
+                                  {cit.github_url && (
+                                    <a
+                                      href={cit.github_url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-[#8b949e] hover:text-[#58a6ff]"
+                                    >
+                                      <ExternalLink className="w-2.5 h-2.5" />
+                                    </a>
+                                  )}
+                                </span>
                               ))}
                             </div>
                           </div>
                         )}
                       </div>
-                    )}
-                  </div>
-                ))}
+                    </div>
+                  ))}
 
-                {isAsking && (
-                  <div className="flex items-center gap-2 p-3 rounded-lg bg-[#000000] border border-[#222222] text-[#58a6ff] font-mono text-xs">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Synthesizing response with GraphRAG...</span>
+                  {isAsking && (
+                    <div className="flex items-center gap-2 p-3 rounded-lg bg-[#000000] border border-[#222222] text-[#8b949e] text-xs font-mono">
+                      <Loader2 className="w-3.5 h-3.5 text-[#58a6ff] animate-spin" />
+                      <span>Synthesizing codebase architecture with Groq LLaMA 3.3 70B...</span>
+                    </div>
+                  )}
+
+                  <div ref={chatBottomRef} className="h-1 shrink-0" />
+                </div>
+
+                {/* Input Prompt Form */}
+                <form
+                  onSubmit={(e) => handleSendMessage(e)}
+                  className="p-3 border-t border-[#222222] bg-[#0a0a0a] flex items-center gap-2"
+                >
+                  <input
+                    type="text"
+                    value={inputQuery}
+                    onChange={(e) => setInputQuery(e.target.value)}
+                    placeholder="Ask about this codebase architecture..."
+                    className="flex-1 px-3 py-2 rounded-md bg-[#000000] border border-[#27272a] text-xs text-[#c9d1d9] placeholder-[#52525b] focus:outline-none focus:border-[#58a6ff] font-mono"
+                  />
+                  <button
+                    type="submit"
+                    disabled={isAsking || !inputQuery.trim()}
+                    className="px-3.5 py-2 rounded-md bg-[#161616] hover:bg-[#222222] border border-[#27272a] text-[#58a6ff] font-semibold text-xs disabled:opacity-40 transition flex items-center gap-1"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                  </button>
+                </form>
+              </div>
+            )}
+
+            {/* TAB 2: RAGAS QUALITY BENCHMARK */}
+            {activeRightTab === "benchmark" && (
+              <div className="flex-1 overflow-y-auto p-4 space-y-4 font-mono">
+                {/* Header & Trigger */}
+                <div className="flex items-center justify-between border-b border-[#222222] pb-3">
+                  <div>
+                    <h4 className="text-xs font-bold text-[#f0f6fc] uppercase tracking-wider">
+                      RAGAS Quality & Faithfulness Benchmark
+                    </h4>
+                    <p className="text-[10px] text-[#8b949e] mt-0.5">
+                      Dynamic repository retrieval and anti-hallucination evaluation
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleRunEvaluation}
+                    disabled={isEvaluating}
+                    className="px-3 py-1.5 rounded-md bg-[#161616] hover:bg-[#222222] border border-[#27272a] text-xs font-semibold text-[#3fb950] flex items-center gap-1.5 disabled:opacity-40 transition shrink-0"
+                  >
+                    {isEvaluating ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        Evaluating...
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="w-3.5 h-3.5" />
+                        Run Benchmark
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {isEvaluating ? (
+                  <div className="py-16 flex flex-col items-center justify-center gap-3 text-[#8b949e]">
+                    <Loader2 className="w-6 h-6 text-[#58a6ff] animate-spin" />
+                    <p className="text-xs">Running dynamic RAGAS test suite...</p>
+                  </div>
+                ) : evalResult && evalResult.mean_faithfulness !== undefined ? (
+                  <div className="space-y-4">
+                    {/* Metric Cards */}
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="p-3 rounded-lg bg-[#000000] border border-[#222222]">
+                        <span className="text-[10px] text-[#8b949e] uppercase font-semibold tracking-wider">Faithfulness</span>
+                        <p className="text-xl font-bold text-[#3fb950] mt-1">
+                          {Math.round(evalResult.mean_faithfulness * 100)}%
+                        </p>
+                      </div>
+                      <div className="p-3 rounded-lg bg-[#000000] border border-[#222222]">
+                        <span className="text-[10px] text-[#8b949e] uppercase font-semibold tracking-wider">Precision</span>
+                        <p className="text-xl font-bold text-[#58a6ff] mt-1">
+                          {Math.round(evalResult.mean_context_precision * 100)}%
+                        </p>
+                      </div>
+                      <div className="p-3 rounded-lg bg-[#000000] border border-[#222222]">
+                        <span className="text-[10px] text-[#8b949e] uppercase font-semibold tracking-wider">Refusal Acc</span>
+                        <p className="text-xl font-bold text-[#f0f6fc] mt-1">
+                          {Math.round(evalResult.refusal_accuracy * 100)}%
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Benchmark Cases List */}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <h5 className="text-xs font-semibold text-[#f0f6fc] uppercase tracking-wider">Dynamic Test Cases</h5>
+                        <span className="text-[10px] text-[#8b949e]">
+                          Passed {evalResult.passed_cases}/{evalResult.total_cases}
+                        </span>
+                      </div>
+
+                      <div className="space-y-2">
+                        {evalResult.details?.map((tc: any, i: number) => (
+                          <div
+                            key={i}
+                            className="p-3 rounded-lg bg-[#000000] border border-[#222222] hover:border-[#333333] transition space-y-2"
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <p className="text-xs text-[#f0f6fc] font-medium leading-snug">{tc.question}</p>
+                              <span
+                                className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase shrink-0 flex items-center gap-1 ${
+                                  tc.passed
+                                    ? "bg-[#238636]/20 text-[#3fb950] border border-[#3fb950]/30"
+                                    : "bg-rose-950/40 text-rose-400 border border-rose-800/40"
+                                }`}
+                              >
+                                {tc.passed ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
+                                {tc.passed ? "PASS" : "FAIL"}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-4 text-[10px] text-[#8b949e] pt-1 border-t border-[#18181b]">
+                              <span>Faithfulness: <strong className="text-[#f0f6fc]">{Math.round(tc.faithfulness * 100)}%</strong></span>
+                              <span>Precision: <strong className="text-[#f0f6fc]">{Math.round(tc.precision * 100)}%</strong></span>
+                              <span>Refusal: <strong className="text-[#f0f6fc]">{tc.refusal_accurate ? "Accurate" : "Mismatch"}</strong></span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="py-12 text-center text-[#8b949e] text-xs">
+                    Index any repository above and click &quot;Run Benchmark&quot; to test grounded retrieval & anti-hallucination accuracy.
                   </div>
                 )}
-                <div ref={chatBottomRef} className="h-1 shrink-0" />
               </div>
-
-              {/* Chat Input Bar */}
-              <form onSubmit={handleSendMessage} className="p-3 border-t border-[#222222] bg-[#0a0a0a] flex items-center gap-2">
-                <input
-                  type="text"
-                  value={inputQuery}
-                  onChange={(e) => setInputQuery(e.target.value)}
-                  placeholder="Ask about this codebase architecture..."
-                  className="flex-1 px-3 py-2 rounded-md bg-[#000000] border border-[#27272a] text-xs text-[#c9d1d9] placeholder-[#52525b] focus:outline-none focus:border-[#58a6ff] font-mono"
-                />
-                <button
-                  type="submit"
-                  disabled={isAsking || !inputQuery.trim()}
-                  className="px-3.5 py-2 rounded-md bg-[#161616] hover:bg-[#222222] border border-[#27272a] text-[#58a6ff] font-semibold text-xs disabled:opacity-40 transition flex items-center gap-1"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                </button>
-              </form>
-            </div>
-          )}
-
-          {/* TAB 2: RAGAS QUALITY BENCHMARK */}
-          {activeRightTab === "benchmark" && (
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 font-mono">
-              <div className="flex items-center justify-between border-b border-[#222222] pb-3">
-                <div>
-                  <h4 className="text-xs font-semibold text-[#f0f6fc] uppercase tracking-wider">
-                    RAGAS Quality & Faithfulness Benchmark
-                  </h4>
-                  <p className="text-[10px] text-[#8b949e] mt-0.5">
-                    Dynamic repository retrieval and anti-hallucination evaluation
-                  </p>
-                </div>
-                <button
-                  onClick={handleRunEvaluation}
-                  disabled={isEvaluating || !githubUrl}
-                  className="px-3 py-1.5 rounded-md bg-[#161616] hover:bg-[#222222] border border-[#27272a] text-[#3fb950] text-xs font-semibold disabled:opacity-40 transition flex items-center gap-1.5"
-                >
-                  {isEvaluating ? (
-                    <>
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      Evaluating...
-                    </>
-                  ) : (
-                    <>
-                      <Zap className="w-3.5 h-3.5" />
-                      Run Benchmark
-                    </>
-                  )}
-                </button>
-              </div>
-
-              {isEvaluating ? (
-                <div className="py-16 flex flex-col items-center justify-center gap-3 text-[#8b949e]">
-                  <Loader2 className="w-6 h-6 text-[#58a6ff] animate-spin" />
-                  <p className="text-xs">Running dynamic RAGAS test suite...</p>
-                </div>
-              ) : evalResult && evalResult.mean_faithfulness !== undefined ? (
-                <div className="space-y-4">
-                  {/* Metric Cards */}
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="p-3 rounded-lg bg-[#000000] border border-[#222222]">
-                      <span className="text-[10px] text-[#8b949e] uppercase font-semibold tracking-wider">Faithfulness</span>
-                      <p className="text-xl font-bold text-[#3fb950] mt-1">
-                        {Math.round(evalResult.mean_faithfulness * 100)}%
-                      </p>
-                    </div>
-                    <div className="p-3 rounded-lg bg-[#000000] border border-[#222222]">
-                      <span className="text-[10px] text-[#8b949e] uppercase font-semibold tracking-wider">Precision</span>
-                      <p className="text-xl font-bold text-[#58a6ff] mt-1">
-                        {Math.round(evalResult.mean_context_precision * 100)}%
-                      </p>
-                    </div>
-                    <div className="p-3 rounded-lg bg-[#000000] border border-[#222222]">
-                      <span className="text-[10px] text-[#8b949e] uppercase font-semibold tracking-wider">Refusal Acc</span>
-                      <p className="text-xl font-bold text-[#f0f6fc] mt-1">
-                        {Math.round(evalResult.refusal_accuracy * 100)}%
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Benchmark Cases List */}
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <h5 className="text-xs font-semibold text-[#f0f6fc] uppercase tracking-wider">Dynamic Test Cases</h5>
-                      <span className="text-[10px] text-[#8b949e]">
-                        Passed {evalResult.passed_cases}/{evalResult.total_cases}
-                      </span>
-                    </div>
-
-                    <div className="space-y-2">
-                      {evalResult.details?.map((tc: any, i: number) => (
-                        <div
-                          key={i}
-                          className="p-3 rounded-lg bg-[#000000] border border-[#222222] hover:border-[#333333] transition space-y-2"
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <p className="text-xs text-[#f0f6fc] font-medium leading-snug">{tc.question}</p>
-                            <span
-                              className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase shrink-0 flex items-center gap-1 ${
-                                tc.passed
-                                  ? "bg-[#238636]/20 text-[#3fb950] border border-[#3fb950]/30"
-                                  : "bg-rose-950/40 text-rose-400 border border-rose-800/40"
-                              }`}
-                            >
-                              {tc.passed ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
-                              {tc.passed ? "PASS" : "FAIL"}
-                            </span>
-                          </div>
-
-                          <div className="flex items-center gap-4 text-[10px] text-[#8b949e] pt-1 border-t border-[#18181b]">
-                            <span>Faithfulness: <strong className="text-[#f0f6fc]">{Math.round(tc.faithfulness * 100)}%</strong></span>
-                            <span>Precision: <strong className="text-[#f0f6fc]">{Math.round(tc.precision * 100)}%</strong></span>
-                            <span>Refusal: <strong className="text-[#f0f6fc]">{tc.refusal_accurate ? "Accurate" : "Mismatch"}</strong></span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="py-12 text-center text-[#8b949e] text-xs">
-                  Index any repository above and click &quot;Run Benchmark&quot; to test grounded retrieval & anti-hallucination accuracy.
-                </div>
-              )}
-            </div>
-          )}
-        </aside>
+            )}
+          </aside>
+        )}
       </div>
     </div>
   );
