@@ -35,16 +35,24 @@
 
 ## 🌌 3D WebGL Cosmos Engine
 
-The built-in **3D Cosmos Engine** visualizes software architecture as a celestial constellation in deep space:
+The built-in **3D Cosmos Engine** visualizes software architecture as an interactive constellation in deep space:
 
+<div align="center">
+
+![Codebase Oracle 3D Cosmos Visualizer](docs/images/3d_orbital_graph.jpg)
+
+</div>
+
+### Key 3D Features:
 * **Stellar Symbol Spheres**: Emissive glowing 3D spheres color-coded by AST type:
   - 🟢 **Sage Emerald (`#3fb950`)**: Modules & Source Files
   - 🟡 **Warm Amber (`#d29922`)**: Classes, Interfaces & Structs
   - 🔵 **Ice Blue (`#58a6ff`)**: Functions & Methods
   - 🟣 **Muted Lavender (`#a371f7`)**: Imports & External Calls
-* **Orbital Controls & Cinematic Rotation**: Smooth 360° orbital camera rotation, auto-orbit toggles, and distance scaling.
+* **3D Floating Text Sprites**: Crisp, billboarded symbol labels floating above nodes in 3D space with easy toggle controls.
+* **Orbital Controls & Cinematic Rotation**: Smooth 360° orbital camera rotation, auto-orbit toggles, and step-zoom controls.
 * **3D Raycasting & Interactive Tooltips**: Hover over celestial nodes to inspect symbol metadata and click to lock inspection cards and trigger AI architectural explanations.
-* **Starfield Background Particle Dust**: Ambient 3D starry particle atmosphere on a pure `#000000` canvas.
+* **Starfield Background Particle Atmosphere**: Ambient 3D starry particle atmosphere on a pure `#000000` canvas.
 
 ---
 
@@ -98,7 +106,7 @@ flowchart TD
 
 | Feature | Description |
 | :--- | :--- |
-| **3D WebGL Cosmos** | Three.js powered interactive 3D force constellation with auto-orbit, raycasting, and glowing celestial spheres. |
+| **3D WebGL Cosmos** | Three.js powered interactive 3D force constellation with auto-orbit, raycasting, floating text billboards, and glowing celestial spheres. |
 | **2D Blueprint & Galaxy** | React Flow powered hierarchical tree and radial orbit views with category counts. |
 | **Universal AST Parsing** | Extracts classes, interfaces, structs, functions, methods, imports, calls, and inheritance bases across `.py`, `.ts`, `.js`, `.go`, `.rs`, `.java`, `.cpp`, and more. |
 | **Grounded Line Citations** | Synthesizes responses accompanied by interactive citation pills that link directly to specific GitHub code lines. |
