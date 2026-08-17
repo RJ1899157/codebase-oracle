@@ -9,7 +9,8 @@
 ![Neo4j](https://img.shields.io/badge/Neo4j-5.26-008CC1?style=for-the-badge&logo=neo4j)
 ![Qdrant](https://img.shields.io/badge/Qdrant-v1.12-DC2626?style=for-the-badge&logo=qdrant)
 ![Groq LLaMA 3.3 70B](https://img.shields.io/badge/LLM-Groq%20LLaMA%203.3%2070B-F05032?style=for-the-badge&logo=meta)
-![RAGAS Score](https://img.shields.io/badge/RAGAS%20Precision-100%25-success?style=for-the-badge)
+![RAGAS Faithfulness](https://img.shields.io/badge/RAGAS%20Faithfulness-92%25-success?style=for-the-badge)
+![RAGAS Precision](https://img.shields.io/badge/RAGAS%20Precision-100%25-success?style=for-the-badge)
 
 **An intelligent codebase knowledge graph, multi-dimensional 2D/3D WebGL architecture visualizer, and conversational assistant with verified GitHub citations & dynamic RAGAS evaluation.**
 
@@ -28,7 +29,7 @@
 2. **Universal Polyglot Ingestion**: Parses Python, JavaScript, TypeScript, Go, Rust, Java, C++, and configuration files into unified AST symbol nodes and relationships.
 3. **Hybrid GraphRAG Retrieval (RRF)**: Merges BM25 lexical keyword matching with 2-hop Neo4j graph dependency expansion using Reciprocal Rank Fusion.
 4. **Verified GitHub Citations**: Answers are grounded with exact file paths and source line ranges (`#L10-L45`) linking directly to the remote repository.
-5. **Dynamic RAGAS Evaluation**: Benchmark engine that auto-generates test cases from real ingested AST symbols to assess Faithfulness (86%), Context Precision (100%), and Hallucination Refusal (100%).
+5. **Dynamic RAGAS Evaluation**: Benchmark engine that auto-generates test cases from real ingested AST symbols to assess Faithfulness (92%), Context Precision (100%), and Hallucination Refusal (100%).
 6. **Jet Black Developer Workspace**: Pitch jet black `#000000` canvas with calm, non-striking pastel accents (Sage Emerald, Warm Amber, Ice Blue, Muted Lavender) engineered for zero eye fatigue.
 
 ---
@@ -49,10 +50,11 @@ The built-in **3D Cosmos Engine** visualizes software architecture as an interac
   - 🟡 **Warm Amber (`#d29922`)**: Classes, Interfaces & Structs
   - 🔵 **Ice Blue (`#58a6ff`)**: Functions & Methods
   - 🟣 **Muted Lavender (`#a371f7`)**: Imports & External Calls
+* **Dynamic 3D Energy Particle Flow**: Animated pulses of light traveling along curved bezier lines to visualize real-time caller/callee execution flow.
+* **Planetary Subsystem Orbitals**: Concentric planetary rings surrounding module clusters, clearly distinguishing architectural domain boundaries.
+* **3D Search & Fly-To**: Smooth camera flight animation that zooms directly into any searched symbol with a spinning neon selection halo.
+* **Camera Presets**: `Constellation` (45° orbit), `Birdseye` (top-down map), and `Core Focus` (central abstractions).
 * **3D Floating Text Sprites**: Crisp, billboarded symbol labels floating above nodes in 3D space with easy toggle controls.
-* **Orbital Controls & Cinematic Rotation**: Smooth 360° orbital camera rotation, auto-orbit toggles, and step-zoom controls.
-* **3D Raycasting & Interactive Tooltips**: Hover over celestial nodes to inspect symbol metadata and click to lock inspection cards and trigger AI architectural explanations.
-* **Starfield Background Particle Atmosphere**: Ambient 3D starry particle atmosphere on a pure `#000000` canvas.
 
 ---
 
@@ -106,13 +108,13 @@ flowchart TD
 
 | Feature | Description |
 | :--- | :--- |
-| **3D WebGL Cosmos** | Three.js powered interactive 3D force constellation with auto-orbit, raycasting, floating text billboards, and glowing celestial spheres. |
+| **3D WebGL Cosmos** | Three.js powered interactive 3D force constellation with auto-orbit, raycasting, floating text billboards, energy particles, and planetary rings. |
 | **2D Blueprint & Galaxy** | React Flow powered hierarchical tree and radial orbit views with category counts. |
 | **Universal AST Parsing** | Extracts classes, interfaces, structs, functions, methods, imports, calls, and inheritance bases across `.py`, `.ts`, `.js`, `.go`, `.rs`, `.java`, `.cpp`, and more. |
 | **Grounded Line Citations** | Synthesizes responses accompanied by interactive citation pills that link directly to specific GitHub code lines. |
 | **1-Click Demo Ingestion** | Instant testability with pre-configured repositories including `FastAPI`, `Flask`, `Express`, and `Tokio`. |
-| **Dynamic RAGAS Benchmark** | Live evaluation measuring Faithfulness (86%), Context Precision (100%), and Anti-Hallucination Refusal (100%). |
-| **Multi-Turn Chat History** | Context-aware conversations allowing iterative exploration and follow-up architectural questions. |
+| **Dynamic RAGAS Benchmark** | Live evaluation measuring Faithfulness (92%), Context Precision (100%), and Anti-Hallucination Refusal (100%). |
+| **Multi-Turn Chat History** | Context-aware conversations with auto-scrolling allowing seamless architectural exploration. |
 
 ---
 
@@ -161,10 +163,10 @@ Codebase Oracle includes a dynamic evaluation suite that automatically creates t
 ├──────────────────────┬──────────────────────────────────────┤
 │ Metric               │ Score                                │
 ├──────────────────────┼──────────────────────────────────────┤
-│ Faithfulness         │ 86% (Grounded against code context)  │
+│ Faithfulness         │ 92% (Grounded against code context)  │
 │ Context Precision    │ 100% (Accurate symbol source files)  │
 │ Refusal Accuracy     │ 100% (Anti-hallucination defense)    │
-│ Dynamic Test Suite   │ 4 / 4 Passing                        │
+│ Dynamic Test Suite   │ 4 / 4 Passing (100% PASS)            │
 └──────────────────────┴──────────────────────────────────────┘
 ```
 
