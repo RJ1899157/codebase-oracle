@@ -190,18 +190,24 @@ export default function App() {
     }
   }, [messages, isAsking, activeRightTab]);
 
-  // Check LLM status on mount
+  // Check LLM status on mount with auto-retry for cloud backend wake-up
   useEffect(() => {
-    fetch(`${API_BASE}/status`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.active_model) {
-          setActiveModel(data.active_model);
-        }
-      })
-      .catch(() => {
-        setActiveModel("Local Graph Engine Active");
-      });
+    let timer: NodeJS.Timeout;
+    const checkStatus = () => {
+      fetch(`${API_BASE}/status`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.active_model) {
+            setActiveModel(data.active_model);
+          }
+        })
+        .catch(() => {
+          setActiveModel("Connecting to Backend...");
+          timer = setTimeout(checkStatus, 4000);
+        });
+    };
+    checkStatus();
+    return () => clearTimeout(timer);
   }, []);
 
   // Category counts
